@@ -219,6 +219,10 @@
                                              we need a conversion step, so we use :value + @input. -->
                                         <input type="number" class="form-control" 
                                                :value="displayTemp(device.value)"
+                                               :min="minTempInput"
+                                               :max="maxTempInput"
+                                               step="1"
+                                               :title="`Allowed range: ${tempRangeLabel()}`"
                                                @input="setTempFromInput(device, $event.target.value)">
                                         <!-- Unit toggle button: cycles between °C and °F -->
                                         <button class="btn btn-outline-secondary" @click="toggleTempUnit">

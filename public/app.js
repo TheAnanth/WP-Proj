@@ -13,6 +13,9 @@ $(document).ready(function() {
 
 const { createApp } = Vue;
 
+const TEMP_MIN_C = 5;
+const TEMP_MAX_C = 40;
+
 createApp({
 
     data() {
@@ -54,6 +57,14 @@ createApp({
             }
 
             return result;
+        },
+
+        minTempInput() {
+            return this.tempUnit === '°F' ? this.celsiusToFahrenheit(TEMP_MIN_C) : TEMP_MIN_C;
+        },
+
+        maxTempInput() {
+            return this.tempUnit === '°F' ? this.celsiusToFahrenheit(TEMP_MAX_C) : TEMP_MAX_C;
         }
     },
 
@@ -129,9 +140,13 @@ createApp({
                     this.newDevice = { name: '', type: '', ipAddress: '' };
 
                     this.refreshAll();
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    this.formError = errorData.error || 'Failed to add device.';
                 }
             } catch (error) {
                 console.error("Failed to add device:", error);
+                this.formError = 'Failed to add device due to a network error.';
             }
         },
 
@@ -180,6 +195,10 @@ createApp({
         },
 
         async updateDevice(device) {
+            if (device.type === 'thermostat') {
+                device.value = this.clampCelsius(device.value);
+            }
+
             try {
                 const response = await fetch(`/api/devices/${device._id}`, {
                     method: 'PUT',
@@ -190,6 +209,9 @@ createApp({
                 if (response.ok) {
 
                     this.fetchAlerts();
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    alert(errorData.error || 'Temperature update failed.');
                 }
             } catch (error) {
                 console.error("Failed to update device:", error);
@@ -211,7 +233,7 @@ createApp({
 
         displayTemp(celsiusValue) {
             if (this.tempUnit === '°F') {
-                return Math.round((celsiusValue * 9 / 5) + 32);
+                return this.celsiusToFahrenheit(celsiusValue);
             }
             return celsiusValue;
         },
@@ -219,11 +241,32 @@ createApp({
         setTempFromInput(device, inputValue) {
             const num = parseFloat(inputValue);
             if (isNaN(num)) return;
+
+            const celsiusValue = this.tempUnit === '°F'
+                ? this.fahrenheitToCelsius(num)
+                : num;
+
+            device.value = this.clampCelsius(celsiusValue);
+        },
+
+        celsiusToFahrenheit(celsiusValue) {
+            return Math.round((celsiusValue * 9 / 5) + 32);
+        },
+
+        fahrenheitToCelsius(fahrenheitValue) {
+            return Math.round((fahrenheitValue - 32) * 5 / 9);
+        },
+
+        clampCelsius(celsiusValue) {
+            const roundedValue = Math.round(celsiusValue);
+            return Math.min(TEMP_MAX_C, Math.max(TEMP_MIN_C, roundedValue));
+        },
+
+        tempRangeLabel() {
             if (this.tempUnit === '°F') {
-                device.value = Math.round((num - 32) * 5 / 9);
-            } else {
-                device.value = num;
+                return `${this.minTempInput} to ${this.maxTempInput} °F`;
             }
+            return `${TEMP_MIN_C} to ${TEMP_MAX_C} °C`;
         },
 
         toggleTempUnit() {

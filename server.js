@@ -6,7 +6,7 @@ const { MongoClient, ObjectId } = require('mongodb');
 
 const cors = require('cors');
 
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const app = express();
 
@@ -28,6 +28,75 @@ let useMemoryStore = true;
 
 let memoryDevices = [];
 let memoryAlerts = [];
+
+const MIN_THERMOSTAT_TEMP_C = 5;
+const MAX_THERMOSTAT_TEMP_C = 40;
+
+function normalizeThermostatTemperature(value, fallback = 21) {
+    const numericValue = Number(value);
+    const safeValue = Number.isFinite(numericValue) ? numericValue : fallback;
+    const roundedValue = Math.round(safeValue);
+    return Math.min(MAX_THERMOSTAT_TEMP_C, Math.max(MIN_THERMOSTAT_TEMP_C, roundedValue));
+}
+
+function isThermostatTemperatureInRange(value) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue)
+        && numericValue >= MIN_THERMOSTAT_TEMP_C
+        && numericValue <= MAX_THERMOSTAT_TEMP_C;
+}
+
+function normalizeDeviceName(name) {
+    return String(name || '').trim().toLowerCase();
+}
+
+function normalizeDeviceIPAddress(ipAddress) {
+    return String(ipAddress || '').trim();
+}
+
+function collectDuplicateDeviceConflicts(existingDevices, candidateDevices) {
+    const existingNames = new Set(existingDevices.map(d => normalizeDeviceName(d.name)).filter(Boolean));
+    const existingIPs = new Set(existingDevices.map(d => normalizeDeviceIPAddress(d.ipAddress)).filter(Boolean));
+
+    const batchNames = new Set();
+    const batchIPs = new Set();
+
+    const conflicts = [];
+
+    candidateDevices.forEach((device, index) => {
+        const nameKey = normalizeDeviceName(device.name);
+        const ipKey = normalizeDeviceIPAddress(device.ipAddress);
+
+        const hasNameConflict = nameKey && (existingNames.has(nameKey) || batchNames.has(nameKey));
+        const hasIPConflict = ipKey && (existingIPs.has(ipKey) || batchIPs.has(ipKey));
+
+        if (hasNameConflict || hasIPConflict) {
+            const reasons = [];
+            if (hasNameConflict) {
+                reasons.push(`duplicate name "${device.name}"`);
+            }
+            if (hasIPConflict) {
+                reasons.push(`duplicate IP "${device.ipAddress}"`);
+            }
+
+            conflicts.push({
+                index,
+                name: device.name,
+                ipAddress: device.ipAddress,
+                reason: reasons.join(' and ')
+            });
+        }
+
+        if (nameKey) {
+            batchNames.add(nameKey);
+        }
+        if (ipKey) {
+            batchIPs.add(ipKey);
+        }
+    });
+
+    return conflicts;
+}
 
 function getDefaultDevices() {
     return [
@@ -67,9 +136,7 @@ MongoClient.connect(mongoURI)
 
         initializeDatabase();
     })
-    .catch(error => {
-        console.error('❌ MongoDB Connection Error:', error.message);
-        console.warn('⚠️ Falling back to in-memory data store. Data will reset when server restarts.');
+    .catch(() => {
         useMemoryStore = true;
         seedMemoryStore();
     });
@@ -164,13 +231,24 @@ app.post('/api/devices', async (req, res) => {
     try {
 
         const newDevice = {
-            name: req.body.name,
+            name: String(req.body.name || '').trim(),
             type: req.body.type,
-            ipAddress: req.body.ipAddress,
+            ipAddress: String(req.body.ipAddress || '').trim(),
             isOn: false,
 
-            value: req.body.type === 'thermostat' ? 21 : null
+            value: req.body.type === 'thermostat' ? normalizeThermostatTemperature(21) : null
         };
+
+        const existingDevices = useMemoryStore
+            ? memoryDevices
+            : await db.collection('devices').find({}, { projection: { name: 1, ipAddress: 1 } }).toArray();
+
+        const conflicts = collectDuplicateDeviceConflicts(existingDevices, [newDevice]);
+        if (conflicts.length > 0) {
+            return res.status(409).json({
+                error: `Device already exists: ${conflicts[0].reason}. Device names and IP addresses must be unique.`
+            });
+        }
 
         if (useMemoryStore) {
             const createdDevice = {
@@ -201,12 +279,26 @@ app.put('/api/devices/:id', async (req, res) => {
     try {
         const deviceId = req.params.id;
 
-        const updates = req.body;
+        const updates = { ...req.body };
 
         if (useMemoryStore) {
             const device = memoryDevices.find(d => d._id === deviceId);
             if (!device) {
                 return res.status(404).json({ error: 'Device not found' });
+            }
+
+            if (updates.value !== undefined) {
+                if (device.type !== 'thermostat') {
+                    return res.status(400).json({ error: 'Temperature updates are only allowed for thermostat devices.' });
+                }
+
+                if (!isThermostatTemperatureInRange(updates.value)) {
+                    return res.status(400).json({
+                        error: `Temperature must be between ${MIN_THERMOSTAT_TEMP_C}°C and ${MAX_THERMOSTAT_TEMP_C}°C.`
+                    });
+                }
+
+                updates.value = normalizeThermostatTemperature(updates.value);
             }
 
             Object.assign(device, updates);
@@ -216,6 +308,28 @@ app.put('/api/devices/:id', async (req, res) => {
             return res.json({ success: true });
         }
 
+        let deviceForAlert = null;
+
+        if (updates.value !== undefined) {
+            const device = await db.collection('devices').findOne({ _id: new ObjectId(deviceId) });
+            if (!device) {
+                return res.status(404).json({ error: 'Device not found' });
+            }
+
+            if (device.type !== 'thermostat') {
+                return res.status(400).json({ error: 'Temperature updates are only allowed for thermostat devices.' });
+            }
+
+            if (!isThermostatTemperatureInRange(updates.value)) {
+                return res.status(400).json({
+                    error: `Temperature must be between ${MIN_THERMOSTAT_TEMP_C}°C and ${MAX_THERMOSTAT_TEMP_C}°C.`
+                });
+            }
+
+            updates.value = normalizeThermostatTemperature(updates.value);
+            deviceForAlert = device;
+        }
+
         await db.collection('devices').updateOne(
             { _id: new ObjectId(deviceId) },
             { $set: updates }
@@ -223,11 +337,9 @@ app.put('/api/devices/:id', async (req, res) => {
 
         if (updates.value !== undefined) {
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            const device = await db.collection('devices').findOne({ _id: new ObjectId(deviceId) });
             await db.collection('alerts').insertOne({
                 time: now,
-                message: `${device.name} temperature set to ${updates.value}°C.`,
+                message: `${deviceForAlert.name} temperature set to ${updates.value}°C.`,
                 timestamp: new Date()
             });
         }
@@ -277,13 +389,36 @@ app.post('/api/devices/import', async (req, res) => {
             return res.status(400).json({ error: 'Request body must be a non-empty array of devices.' });
         }
 
-        const cleanDevices = importedDevices.map(d => ({
-            name: d.name || 'Unnamed Device',
-            type: ['light', 'lock', 'camera', 'thermostat', 'other'].includes(d.type) ? d.type : 'other',
-            ipAddress: d.ipAddress || '0.0.0.0',
-            isOn: false,
-            value: d.type === 'thermostat' ? (d.value || 21) : null
-        }));
+        const cleanDevices = importedDevices.map(d => {
+            const normalizedType = ['light', 'lock', 'camera', 'thermostat', 'other'].includes(d.type) ? d.type : 'other';
+
+            return {
+                name: String(d.name || 'Unnamed Device').trim(),
+                type: normalizedType,
+                ipAddress: String(d.ipAddress || '0.0.0.0').trim(),
+                isOn: false,
+                value: normalizedType === 'thermostat'
+                    ? normalizeThermostatTemperature(d.value, 21)
+                    : null
+            };
+        });
+
+        const existingDevices = useMemoryStore
+            ? memoryDevices
+            : await db.collection('devices').find({}, { projection: { name: 1, ipAddress: 1 } }).toArray();
+
+        const duplicateConflicts = collectDuplicateDeviceConflicts(existingDevices, cleanDevices);
+        if (duplicateConflicts.length > 0) {
+            const formattedConflicts = duplicateConflicts
+                .slice(0, 5)
+                .map(c => `item ${c.index + 1}: ${c.reason}`)
+                .join('; ');
+
+            return res.status(409).json({
+                error: `Import blocked due to duplicate devices (${formattedConflicts}). Device names and IP addresses must be unique.`,
+                duplicates: duplicateConflicts
+            });
+        }
 
         if (useMemoryStore) {
 
@@ -332,8 +467,6 @@ app.post('/api/contact', async (req, res) => {
         };
 
         if (useMemoryStore) {
-
-            console.log('📩 Contact form submission (in-memory):', contactMessage);
             return res.json({ success: true, message: 'Message received! We will get back to you soon.' });
         }
 
@@ -359,7 +492,6 @@ async function initializeDatabase() {
             { name: 'Smart Thermostat', type: 'thermostat', isOn: true, value: 22, ipAddress: '192.168.1.12' },
             { name: 'Bedroom Light', type: 'light', isOn: false, ipAddress: '192.168.1.13' }
         ]);
-        console.log('Inserted default devices into MongoDB.');
     }
 
     const devicesWithoutIP = await db.collection('devices')
@@ -373,7 +505,17 @@ async function initializeDatabase() {
         );
     }
 
-    if (devicesWithoutIP.length > 0) {
-        console.log(`✅ Patched ${devicesWithoutIP.length} device(s) with dummy IP addresses.`);
+    const thermostatDevices = await db.collection('devices')
+        .find({ type: 'thermostat' })
+        .toArray();
+
+    for (const thermostat of thermostatDevices) {
+        const normalizedTemp = normalizeThermostatTemperature(thermostat.value, 21);
+        if (thermostat.value !== normalizedTemp) {
+            await db.collection('devices').updateOne(
+                { _id: thermostat._id },
+                { $set: { value: normalizedTemp } }
+            );
+        }
     }
 }
