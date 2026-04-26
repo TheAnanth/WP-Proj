@@ -1,0 +1,189 @@
+/* ============================================================
+   SmartSync — Custom Stylesheet
+   ============================================================
+   This file contains custom CSS that works alongside Bootstrap.
+   Bootstrap handles the heavy lifting (grid, buttons, cards),
+   and we add our own tweaks for branding, dark mode, and
+   micro-interactions that Bootstrap doesn't provide.
+   ============================================================ */
+
+/* --- CSS Custom Properties (Variables) ---
+   Defined on :root so they're available everywhere.
+   These act as our "design tokens" — change one value here
+   and it updates across the entire site. */
+:root {
+    --bg-body: #f0f2f5;
+    --bg-card: #ffffff;
+    --bg-stats: #ffffff;
+    --text-primary: #212529;
+    --text-muted: #6c757d;
+    --border-color: #dee2e6;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --transition-speed: 0.25s;
+}
+
+/* --- Dark Mode Variables ---
+   When the [data-bs-theme="dark"] attribute is set on <html>,
+   these variables override the defaults above.
+   Bootstrap 5.3+ natively supports this attribute for its own
+   components, and we extend it for our custom elements. */
+[data-bs-theme="dark"] {
+    --bg-body: #1a1d23;
+    --bg-card: #2b2f38;
+    --bg-stats: #2b2f38;
+    --text-primary: #e4e6ea;
+    --text-muted: #9ca3af;
+    --border-color: #3d4250;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Base Styles --- */
+body {
+    background-color: var(--bg-body);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-primary);
+    /* Smooth transition when toggling dark mode */
+    transition: background-color var(--transition-speed) ease,
+                color var(--transition-speed) ease;
+}
+
+/* --- Stats Cards --- */
+/* The summary cards at the top of the dashboard */
+.stat-card {
+    background: var(--bg-stats);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1.25rem;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-speed) ease,
+                box-shadow var(--transition-speed) ease,
+                background-color var(--transition-speed) ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Large number displayed in stat cards */
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* --- Device Cards --- */
+.device-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    /* Transition for the hover lift effect */
+    transition: transform var(--transition-speed) ease,
+                box-shadow var(--transition-speed) ease,
+                background-color var(--transition-speed) ease;
+}
+
+.device-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Emoji icons next to device names */
+.device-icon {
+    font-size: 1.3rem;
+    margin-right: 0.4rem;
+}
+
+/* --- Search & Filter Bar --- */
+.search-bar {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: background-color var(--transition-speed) ease;
+}
+
+/* --- Dark Mode Toggle Button --- */
+.dark-mode-btn {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.dark-mode-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+}
+
+/* --- Import/Export Buttons Area --- */
+.data-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* --- Cards (Override Bootstrap in Dark Mode) --- */
+[data-bs-theme="dark"] .card {
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+}
+
+[data-bs-theme="dark"] .list-group-item {
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: #343a45;
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* --- Subtle fade-in animation for device cards --- */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.device-card {
+    animation: fadeInUp 0.3s ease forwards;
+}
+
+/* --- Empty State (shown when no devices match search) --- */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+}
+
+.empty-state .emoji {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
