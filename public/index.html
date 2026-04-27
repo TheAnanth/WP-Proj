@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartSync Dashboard</title>
-    
+
     <!-- Bootstrap CSS (Unit IV) — Loaded from CDN (Content Delivery Network) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Our custom CSS file — loaded AFTER Bootstrap so our styles can override it -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+
+<body class="landing-page">
+    <div class="noise-overlay"></div>
 
     <!-- ============================================================
          Vue App Container (Unit IV)
@@ -20,29 +23,55 @@
          and v- prefixed attributes (directives) to bind data to HTML.
          ============================================================ -->
     <div id="app">
-        
+
         <!-- ======================== NAVBAR ======================== -->
-        <!-- Bootstrap navbar component with dark theme -->
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-            <div class="container">
-                <a class="navbar-brand fw-bold" href="#">⚡ SmartSync</a>
-                
+        <div class="container pt-4">
+            <nav class="nav-organic d-flex justify-content-between align-items-center mb-5">
+                <a class="navbar-brand font-serif-heading fw-bold fs-4 text-decoration-none"
+                    style="color: var(--org-fg);" href="#">⚡ SmartSync</a>
+
                 <div class="d-flex align-items-center gap-3">
-                    <a class="nav-link text-light" href="#">Dashboard</a>
-                    <a class="nav-link text-light" href="contact.html">Contact Us</a>
-                    
+                    <a class="nav-link" href="index.html">Dashboard</a>
+                    <a class="nav-link" href="analytics.html">Analytics</a>
+                    <a class="nav-link" href="contact.html">Contact Us</a>
+
                     <!-- Dark Mode Toggle Button
                          @click is a Vue event listener (short for v-on:click).
                          It calls the toggleDarkMode() method when clicked.
                          The button text changes based on the 'isDark' data property. -->
-                    <button class="dark-mode-btn" @click="toggleDarkMode" :title="isDark ? 'Light Mode' : 'Dark Mode'">
+                    <button class="dark-mode-btn" style="color: var(--org-fg); border-color: var(--org-border);"
+                        @click="toggleDarkMode" :title="isDark ? 'Light Mode' : 'Dark Mode'">
                         {{ isDark ? '☀️' : '🌙' }}
                     </button>
-                </div>
-            </div>
-        </nav>
 
-        <div class="container">
+                    <!-- Hover Profile Menu -->
+                    <div class="dropdown profile-dropdown" v-if="currentUser" @mouseenter="showProfileMenu = true"
+                        @mouseleave="showProfileMenu = false">
+                        <button class="btn btn-organic rounded-circle d-flex align-items-center justify-content-center"
+                            style="width: 40px; height: 40px; padding: 0;">
+                            {{ currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U' }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" :class="{ 'show': showProfileMenu }"
+                            style="position: absolute; right: 0; top: 100%; border-radius: 1rem; border: 1px solid var(--org-border);">
+                            <li>
+                                <h6 class="dropdown-header font-sans-body">{{ currentUser.name }}</h6>
+                            </li>
+                            <li><span class="dropdown-item-text text-muted small font-sans-body">{{ currentUser.email
+                                    }}</span></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><button class="dropdown-item text-danger font-sans-body" @click="logout">Logout</button>
+                            </li>
+                            <li><button class="dropdown-item text-danger fw-bold font-sans-body"
+                                    @click="deleteAccount">Delete Account</button></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <div class="container position-relative z-10">
 
             <!-- ======================== STATS BAR ======================== -->
             <!-- Three summary cards showing device counts.
@@ -50,67 +79,110 @@
                  The stats object is fetched from our /api/devices/stats endpoint. -->
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-number text-primary">{{ stats.total }}</div>
-                        <div class="stat-label">Total Devices</div>
+                    <div class="card-organic p-4 text-center">
+                        <div class="stat-number font-serif-heading" style="color: var(--org-primary);">{{ stats.total }}
+                        </div>
+                        <div class="stat-label font-sans-body">Total Devices</div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-number text-success">{{ stats.active }}</div>
-                        <div class="stat-label">Active</div>
+                    <div class="card-organic p-4 text-center">
+                        <div class="stat-number font-serif-heading" style="color: var(--org-secondary);">{{ stats.active
+                            }}</div>
+                        <div class="stat-label font-sans-body">Active</div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-number text-secondary">{{ stats.offline }}</div>
-                        <div class="stat-label">Offline</div>
+                    <div class="card-organic p-4 text-center">
+                        <div class="stat-number font-serif-heading" style="color: var(--org-muted-fg);">{{ stats.offline
+                            }}</div>
+                        <div class="stat-label font-sans-body">Offline</div>
                     </div>
                 </div>
             </div>
 
             <div class="row">
-                <!-- ======================== MAIN SECTION (Left Column) ======================== -->
-                <div class="col-md-8">
-                    
+                <!-- ======================== MAIN SECTION (Full Width) ======================== -->
+                <div class="col-md-12">
+
                     <!-- ==================== ADD NEW DEVICE FORM (Unit II) ==================== -->
                     <!-- @submit.prevent="addNewDevice":
                          - @submit listens for the form's submit event
                          - .prevent is a Vue event modifier that calls preventDefault()
                            (stops the browser from reloading the page on form submit)
                          - "addNewDevice" is the Vue method to call -->
-                    <div class="card mb-4 shadow-sm border-0">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">➕ Add New Device</h5>
+                    <div class="card-organic mb-4 p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0 font-serif-heading">➕ Add New Device</h5>
                         </div>
-                        <div class="card-body">
+                        <div>
                             <form @submit.prevent="addNewDevice">
                                 <!-- Bootstrap grid: row with g-2 (gap of 0.5rem) -->
                                 <div class="row g-2">
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <!-- v-model creates TWO-WAY BINDING (Unit IV):
                                              When user types, newDevice.name auto-updates.
                                              When newDevice.name changes in JS, the input updates. -->
-                                        <input type="text" class="form-control" placeholder="Device Name" 
-                                               v-model="newDevice.name" required>
+                                        <input type="text" class="form-control input-organic" placeholder="Device Name"
+                                            v-model="newDevice.name" required>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <!-- v-model on <select> binds to the selected option's value -->
-                                        <select class="form-select" v-model="newDevice.type" required>
+                                        <select class="form-select input-organic" v-model="newDevice.type" required>
                                             <option value="" disabled>Select Type...</option>
-                                            <option value="light">Smart Light</option>
-                                            <option value="lock">Smart Lock</option>
-                                            <option value="camera">Camera</option>
-                                            <option value="thermostat">Thermostat</option>
-                                            <option value="other">Other</option>
+                                            <optgroup label="Core Home">
+                                                <option value="light">Smart Light</option>
+                                                <option value="lock">Smart Lock</option>
+                                                <option value="thermostat">Thermostat</option>
+                                                <option value="camera">Security Camera</option>
+                                                <option value="plug">Smart Plug</option>
+                                                <option value="speaker">Smart Speaker</option>
+                                                <option value="tv">Smart TV</option>
+                                            </optgroup>
+                                            <optgroup label="Climate & Air">
+                                                <option value="fan">Smart Fan</option>
+                                                <option value="purifier">Air Purifier</option>
+                                                <option value="blinds">Smart Blinds</option>
+                                            </optgroup>
+                                            <optgroup label="Appliances">
+                                                <option value="fridge">Smart Fridge</option>
+                                                <option value="washer">Washing Machine</option>
+                                                <option value="dryer">Clothes Dryer</option>
+                                                <option value="oven">Smart Oven</option>
+                                                <option value="dishwasher">Dishwasher</option>
+                                                <option value="vacuum">Robot Vacuum</option>
+                                            </optgroup>
+                                            <optgroup label="Garden & Lawn">
+                                                <option value="sprinkler">Smart Sprinkler</option>
+                                                <option value="mower">Robot Mower</option>
+                                                <option value="pool_pump">Pool Pump</option>
+                                                <option value="outdoor_light">Outdoor Light</option>
+                                                <option value="weather_station">Weather Station</option>
+                                                <option value="soil_sensor">Soil Sensor</option>
+                                            </optgroup>
+                                            <optgroup label="Other Sensors">
+                                                <option value="doorbell">Smart Doorbell</option>
+                                                <option value="smoke_detector">Smoke/CO Detector</option>
+                                                <option value="garage">Garage Door</option>
+                                                <option value="other">Other Device</option>
+                                            </optgroup>
+                                        </select>
+
+                                    </div>
+                                    <div class="col-md-2" v-if="availableSubtypes.length > 0">
+                                        <select class="form-select" v-model="newDevice.subType" required>
+                                            <option value="" disabled>Subtype...</option>
+                                            <option v-for="sub in availableSubtypes" :key="sub" :value="sub">{{ sub }}
+                                            </option>
                                         </select>
                                     </div>
                                     <div class="col-md-3">
-                                        <input type="text" class="form-control" placeholder="IP (e.g. 192.168.1.5)" 
-                                               v-model="newDevice.ipAddress" required>
+                                        <input type="text" class="form-control" placeholder="IP (e.g. 192.168.1.5)"
+                                            v-model="newDevice.ipAddress" required>
                                     </div>
                                     <div class="col-md-2">
-                                        <button type="submit" class="btn btn-success w-100">Add</button>
+                                        <button type="submit" class="btn-organic w-100 h-100 px-2"
+                                            style="padding-top: 0; padding-bottom: 0;">Add</button>
                                     </div>
                                 </div>
                                 <!-- v-if: Conditionally renders this element ONLY when formError is truthy.
@@ -127,44 +199,59 @@
                                 <!-- Search input: v-model binds to searchQuery.
                                      As the user types, the filteredDevices computed property
                                      automatically recalculates (using regex pattern matching). -->
-                                <input type="text" class="form-control" placeholder="🔍 Search devices..." 
-                                       v-model="searchQuery">
+                                <input type="text" class="form-control input-organic" placeholder="🔍 Search devices..."
+                                    v-model="searchQuery">
                             </div>
                             <div class="col-md-3">
                                 <!-- Filter dropdown: v-model binds to filterType.
                                      When changed, filteredDevices recalculates instantly. -->
-                                <select class="form-select" v-model="filterType">
+                                <select class="form-select input-organic" v-model="filterType">
                                     <option value="all">All Types</option>
-                                    <option value="light">💡 Lights</option>
-                                    <option value="lock">🔒 Locks</option>
-                                    <option value="camera">📷 Cameras</option>
-                                    <option value="thermostat">🌡️ Thermostats</option>
-                                    <option value="other">🔌 Other</option>
+                                    <optgroup label="Core Home">
+                                        <option value="light">💡 Smart Light</option>
+                                        <option value="lock">🔒 Smart Lock</option>
+                                        <option value="thermostat">🌡️ Thermostat</option>
+                                        <option value="camera">📷 Security Camera</option>
+                                        <option value="plug">🔌 Smart Plug</option>
+                                        <option value="speaker">🔊 Smart Speaker</option>
+                                        <option value="tv">📺 Smart TV</option>
+                                    </optgroup>
+                                    <optgroup label="Climate & Air">
+                                        <option value="fan">💨 Smart Fan</option>
+                                        <option value="purifier">🍃 Air Purifier</option>
+                                        <option value="blinds">🪟 Smart Blinds</option>
+                                    </optgroup>
+                                    <optgroup label="Appliances">
+                                        <option value="fridge">❄️ Smart Fridge</option>
+                                        <option value="washer">🧺 Washing Machine</option>
+                                        <option value="dryer">☀️ Clothes Dryer</option>
+                                        <option value="oven">🔥 Smart Oven</option>
+                                        <option value="dishwasher">🍽️ Dishwasher</option>
+                                        <option value="vacuum">🤖 Robot Vacuum</option>
+                                    </optgroup>
+                                    <optgroup label="Garden & Lawn">
+                                        <option value="sprinkler">💦 Smart Sprinkler</option>
+                                        <option value="mower">🚜 Robot Mower</option>
+                                        <option value="pool_pump">🏊 Pool Pump</option>
+                                        <option value="outdoor_light">🏮 Outdoor Light</option>
+                                        <option value="weather_station">⛅ Weather Station</option>
+                                        <option value="soil_sensor">🌱 Soil Sensor</option>
+                                    </optgroup>
+                                    <optgroup label="Other Sensors">
+                                        <option value="doorbell">🔔 Smart Doorbell</option>
+                                        <option value="smoke_detector">🚨 Smoke Detector</option>
+                                        <option value="garage">🚪 Garage Door</option>
+                                        <option value="other">❓ Other Device</option>
+                                    </optgroup>
                                 </select>
-                            </div>
-                            <div class="col-md-4">
-                                <!-- Export & Import buttons -->
-                                <div class="data-actions">
-                                    <button class="btn btn-sm btn-outline-primary" @click="exportToJSON">
-                                        📥 Export JSON
-                                    </button>
-                                    <label class="btn btn-sm btn-outline-secondary mb-0">
-                                        📤 Import JSON
-                                        <!-- Hidden file input. When user selects a file, the
-                                             'change' event fires and calls importJSON().
-                                             The 'accept' attribute limits the file picker to .json files.
-                                             ref="fileInput" gives us a direct reference to this DOM element. -->
-                                        <input type="file" accept=".json" @change="importJSON" 
-                                               ref="fileInput" style="display: none;">
-                                    </label>
-                                </div>
+
                             </div>
                         </div>
                     </div>
 
                     <!-- ==================== DEVICE LIST ==================== -->
-                    <h2 class="mb-3">My Devices</h2>
-                    
+                    <h2 class="mb-3 font-serif-heading">My Devices</h2>
+
                     <div class="row g-3" id="device-container">
                         <!-- v-for DIRECTIVE (Unit IV): Loops through filteredDevices
                              and renders a card for each one.
@@ -172,39 +259,41 @@
                              it uses the key to track which items changed/moved/were removed.
                              We use device._id because it's unique for each device. -->
                         <div class="col-md-6" v-for="(device, index) in filteredDevices" :key="device._id">
-                            
-                            <div class="card shadow-sm device-card border-0">
-                                <div class="card-body">
+
+                            <div class="card-organic p-4 mb-2">
+                                <div>
                                     <!-- d-flex: Bootstrap utility for display: flex
                                          justify-content-between: pushes children to opposite ends
                                          align-items-center: vertically centers children -->
                                     <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <h5 class="card-title mb-0 fw-bold">
+                                        <h5 class="mb-0 fw-bold font-serif-heading">
                                             <!-- Device icon method returns an emoji based on device type -->
                                             <span class="device-icon">{{ deviceIcon(device.type) }}</span>
-                                            {{ device.name }}
+                                            {{ device.name }}{{ device.subType ? ' - ' + device.subType : '' }}
                                         </h5>
                                         <div>
                                             <!-- :class with DYNAMIC BINDING (Unit IV):
                                                  The colon (:) is short for v-bind:.
                                                  This evaluates the JS expression and applies
                                                  'bg-success' if isOn is true, 'bg-secondary' if false. -->
-                                            <span class="badge me-2" :class="device.isOn ? 'bg-success' : 'bg-secondary'">
+                                            <span class="badge me-2"
+                                                :class="device.isOn ? 'bg-success' : 'bg-secondary'">
                                                 {{ device.isOn ? 'Active' : 'Offline' }}
                                             </span>
                                             <!-- @click calls deleteDevice() with the device ID.
                                                  We pass the actual index in the ORIGINAL devices array,
                                                  not the filtered index, to avoid splice issues. -->
-                                            <button class="btn btn-sm btn-outline-danger" 
-                                                    @click="deleteDevice(device._id)">✕</button>
+                                            <button class="btn btn-sm btn-outline-primary me-1"
+                                                @click="openEditModal(device)">✎</button>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                @click="deleteDevice(device._id)">✖</button>
                                         </div>
                                     </div>
 
                                     <!-- ALL devices get a toggle button (ON/OFF) -->
-                                    <div class="d-grid gap-2 mb-2">
-                                        <button 
-                                            class="btn" 
-                                            :class="device.isOn ? 'btn-danger' : 'btn-success'"
+                                    <div class="d-grid gap-2 mb-2 mt-4">
+                                        <button class="btn-organic w-100"
+                                            :style="device.isOn ? 'background: var(--org-destructive);' : 'background: var(--org-primary);'"
                                             @click="toggleDevice(device._id)">
                                             {{ device.isOn ? 'Turn Off' : 'Turn On' }}
                                         </button>
@@ -213,24 +302,54 @@
                                     <!-- v-if DIRECTIVE (Unit IV): Conditional rendering.
                                          Only renders the temperature controls if the device
                                          is a thermostat. Other device types skip this block. -->
+                                    <div v-if="['light', 'speaker', 'blinds'].includes(device.type)"
+                                        class="input-group mb-2">
+                                        <span class="input-group-text" style="font-size: 0.8rem;">
+                                            {{ device.type === 'light' ? 'Brightness' : device.type === 'speaker' ?
+                                            'Volume' : 'Open' }}
+                                        </span>
+                                        <input type="range" class="form-range form-control" min="0" max="100"
+                                            v-model="device.value">
+                                        <span class="input-group-text">{{ device.value || 0 }}%</span>
+                                        <button class="btn-organic" style="padding: 0.375rem 1rem;"
+                                            @click="updateDevice(device)">Set</button>
+                                    </div>
+
+                                    <div v-if="device.type === 'fan'" class="input-group mb-2">
+                                        <span class="input-group-text" style="font-size: 0.8rem;">Speed</span>
+                                        <input type="range" class="form-range form-control" min="1" max="5" step="1"
+                                            v-model="device.value">
+                                        <span class="input-group-text">{{ device.value || 1 }}</span>
+                                        <button class="btn-organic" style="padding: 0.375rem 1rem;"
+                                            @click="updateDevice(device)">Set</button>
+                                    </div>
+
+                                    <div v-if="['sprinkler', 'mower', 'pool_pump'].includes(device.type)"
+                                        class="input-group mb-2">
+                                        <span class="input-group-text" style="font-size: 0.8rem;">Runtime</span>
+                                        <input type="number" class="form-control" min="1" max="180" step="5"
+                                            placeholder="Mins" v-model="device.value">
+                                        <span class="input-group-text">min</span>
+                                        <button class="btn-organic" style="padding: 0.375rem 1rem;"
+                                            @click="updateDevice(device)">Set</button>
+                                    </div>
+
                                     <div v-if="device.type === 'thermostat'" class="input-group mb-2">
                                         <!-- displayTemp() converts the stored °C value to the
                                              selected unit. v-model wouldn't work here because
                                              we need a conversion step, so we use :value + @input. -->
-                                        <input type="number" class="form-control" 
-                                               :value="displayTemp(device.value)"
-                                               :min="minTempInput"
-                                               :max="maxTempInput"
-                                               step="1"
-                                               :title="`Allowed range: ${tempRangeLabel()}`"
-                                               @input="setTempFromInput(device, $event.target.value)">
+                                        <input type="number" class="form-control" :value="displayTemp(device.value)"
+                                            :min="minTempInput" :max="maxTempInput" step="1"
+                                            :title="`Allowed range: ${tempRangeLabel()}`"
+                                            @input="setTempFromInput(device, $event.target.value)">
                                         <!-- Unit toggle button: cycles between °C and °F -->
                                         <button class="btn btn-outline-secondary" @click="toggleTempUnit">
                                             {{ tempUnit }}
                                         </button>
-                                        <button class="btn btn-primary" @click="updateDevice(device)">Set</button>
+                                        <button class="btn-organic" style="padding: 0.375rem 1rem;"
+                                            @click="updateDevice(device)">Set</button>
                                     </div>
-                                    
+
                                     <small class="text-muted mt-2 d-block" v-if="device.ipAddress">
                                         IP: {{ device.ipAddress }}
                                     </small>
@@ -248,32 +367,50 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- ======================== SIDEBAR (Right Column) ======================== -->
-                <div class="col-md-4">
-                    <h2 class="mb-3">
-                        Activity Log
-                        <!-- jQuery handles this button's click event (see app.js).
-                             We use jQuery here specifically because the syllabus (Unit III)
-                             requires demonstrating jQuery for DOM manipulation/animation. -->
-                        <button id="toggle-alerts" class="btn btn-sm btn-outline-secondary float-end mt-1">Hide</button>
-                    </h2>
-                    <ul class="list-group shadow-sm" id="alerts-box">
-                        <li class="list-group-item list-group-item-light border-0 border-bottom" 
-                            v-for="alert in alerts" :key="alert._id">
-                            <strong class="text-primary">[{{ alert.time }}]</strong> <br>
-                            {{ alert.message }}
-                        </li>
-                        <li v-if="alerts.length === 0" class="list-group-item text-muted">No recent activity.</li>
-                    </ul>
-                </div>
             </div>
         </div>
 
         <!-- Footer -->
         <footer class="text-center text-muted py-4 mt-4">
-            <small>SmartSync Dashboard &copy; 2025 — Built with Node.js, Vue.js, Bootstrap & MongoDB</small>
+            <small>SmartSync Dashboard &copy; 2026 — Built with Node.js, Vue.js, Bootstrap & MongoDB</small>
         </footer>
+
+        <!-- Edit Device Modal -->
+        <div class="modal fade" id="editDeviceModal" tabindex="-1" v-if="editDevice">
+            <div class="modal-dialog">
+                <div class="modal-content card-organic p-2 border-0" style="background-color: var(--org-bg);">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title font-serif-heading">Edit {{ editDevice.type ? editDevice.type.replace('_',' ') : 'Device' }}
+                        </h5>
+                        <button type="button" class="btn-close" :class="{ 'btn-close-white': isDark }"
+                            data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body font-sans-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Device Name</label>
+                            <input type="text" class="form-control input-organic" v-model="editDevice.name">
+                        </div>
+                        <div class="mb-3" v-if="editAvailableSubtypes.length > 0">
+                            <label class="form-label fw-bold">Subtype</label>
+                            <select class="form-select input-organic" v-model="editDevice.subType">
+                                <option value="">None</option>
+                                <option v-for="sub in editAvailableSubtypes" :key="sub" :value="sub">{{ sub }}</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">IP Address</label>
+                            <input type="text" class="form-control input-organic" v-model="editDevice.ipAddress">
+                        </div>
+                        <div class="alert alert-danger" v-if="editFormError">{{ editFormError }}</div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn-organic-outline px-3 py-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn-organic px-4 py-2" @click="saveDeviceEdit">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- ============================================================
@@ -290,4 +427,5 @@
     <!-- Our custom application logic -->
     <script src="app.js"></script>
 </body>
+
 </html>

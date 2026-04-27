@@ -10,7 +10,8 @@
     <!-- Our custom CSS (shared with the dashboard for consistent styling) -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="landing-page">
+    <div class="noise-overlay"></div>
 
     <!-- ============================================================
          Vue App Container for the Contact Page
@@ -22,26 +23,39 @@
         <!-- ======================== NAVBAR ======================== -->
         <!-- Same navbar as the dashboard for consistent navigation.
              The 'active' class is on "Contact Us" instead of "Dashboard". -->
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-            <div class="container">
-                <a class="navbar-brand fw-bold" href="index.html">⚡ SmartSync</a>
+        <div class="container pt-4">
+            <nav class="nav-organic d-flex justify-content-between align-items-center mb-5">
+                <a class="navbar-brand font-serif-heading fw-bold fs-4 text-decoration-none" style="color: var(--org-fg);" href="index.html">⚡ SmartSync</a>
                 <div class="d-flex align-items-center gap-3">
-                    <a class="nav-link text-light" href="index.html">Dashboard</a>
-                    <a class="nav-link text-light active" href="contact.html">Contact Us</a>
+                    <a class="nav-link" href="index.html">Dashboard</a>                      <a class="nav-link" href="analytics.html">Analytics</a>                    <a class="nav-link active" href="contact.html">Contact Us</a>
                     <!-- Dark mode toggle (same as dashboard) -->
-                    <button class="dark-mode-btn" @click="toggleDarkMode" :title="isDark ? 'Light Mode' : 'Dark Mode'">
+                    <button class="dark-mode-btn" style="color: var(--org-fg); border-color: var(--org-border);" @click="toggleDarkMode" :title="isDark ? 'Light Mode' : 'Dark Mode'">
                         {{ isDark ? '☀️' : '🌙' }}
                     </button>
-                </div>
-            </div>
-        </nav>
 
-        <div class="container">
+                    <!-- Hover Profile Menu -->
+                    <div class="dropdown profile-dropdown" v-if="currentUser" @mouseenter="showProfileMenu = true" @mouseleave="showProfileMenu = false">
+                        <button class="btn btn-organic rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; padding: 0;">
+                            {{ currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U' }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" :class="{ 'show': showProfileMenu }" style="position: absolute; right: 0; top: 100%; border-radius: 1rem; border: 1px solid var(--org-border);">
+                            <li><h6 class="dropdown-header font-sans-body">{{ currentUser.name }}</h6></li>
+                            <li><span class="dropdown-item-text text-muted small font-sans-body">{{ currentUser.email }}</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button class="dropdown-item text-danger font-sans-body" @click="logout">Logout</button></li>
+                            <li><button class="dropdown-item text-danger fw-bold font-sans-body" @click="deleteAccount">Delete Account</button></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <div class="container position-relative z-10">
             <div class="row justify-content-center">
                 <div class="col-md-8">
 
                     <!-- Page Title -->
-                    <h2 class="mb-4 text-center">📬 Contact Us</h2>
+                    <h2 class="mb-4 text-center font-serif-heading">📬 Contact Us</h2>
                     <p class="text-muted text-center mb-4">
                         Have a question, suggestion, or ran into a problem? Send us a message and we'll get back to you.
                     </p>
@@ -52,8 +66,8 @@
                          - Vue two-way binding with v-model (Unit IV)
                          - Form validation (both HTML5 'required' and server-side regex)
                          - @submit.prevent to handle submission via JavaScript (no page reload) -->
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body p-4">
+                    <div class="card-organic p-4">
+                        <div>
 
                             <!-- Success/Error message displayed after form submission -->
                             <div v-if="statusMessage" class="alert" 
@@ -68,7 +82,7 @@
                                     <!-- v-model binds this input's value to form.name in Vue data.
                                          'required' is an HTML5 attribute that prevents submission
                                          if the field is empty (browser-level validation). -->
-                                    <input type="text" class="form-control" id="contactName" 
+                                    <input type="text" class="form-control input-organic" id="contactName" 
                                            placeholder="e.g. Ibrahim" v-model="form.name" required>
                                 </div>
 
@@ -77,14 +91,14 @@
                                     <label for="contactEmail" class="form-label fw-bold">Email Address</label>
                                     <!-- type="email" tells the browser to validate email format.
                                          Our server also validates with a regex as a second layer. -->
-                                    <input type="email" class="form-control" id="contactEmail" 
+                                    <input type="email" class="form-control input-organic" id="contactEmail" 
                                            placeholder="e.g. ibrahim@example.com" v-model="form.email" required>
                                 </div>
 
                                 <!-- Subject Dropdown -->
                                 <div class="mb-3">
                                     <label for="contactSubject" class="form-label fw-bold">Subject</label>
-                                    <select class="form-select" id="contactSubject" v-model="form.subject">
+                                    <select class="form-select input-organic" id="contactSubject" v-model="form.subject">
                                         <option value="General Inquiry">General Inquiry</option>
                                         <option value="Bug Report">Bug Report</option>
                                         <option value="Feature Request">Feature Request</option>
@@ -98,7 +112,7 @@
                                     <label for="contactMessage" class="form-label fw-bold">Message</label>
                                     <!-- <textarea> is used for multi-line text input.
                                          'rows' sets the default visible height. -->
-                                    <textarea class="form-control" id="contactMessage" rows="5" 
+                                    <textarea class="form-control input-organic" id="contactMessage" rows="5" 
                                               placeholder="Tell us what's on your mind..."
                                               v-model="form.message" required></textarea>
                                 </div>
@@ -106,7 +120,7 @@
                                 <!-- Submit Button -->
                                 <!-- :disabled is a Vue dynamic binding. When isSubmitting is true,
                                      the button becomes non-clickable (prevents double submissions). -->
-                                <button type="submit" class="btn btn-primary w-100" :disabled="isSubmitting">
+                                <button type="submit" class="btn-organic w-100 mt-2" :disabled="isSubmitting">
                                     {{ isSubmitting ? 'Sending...' : 'Send Message' }}
                                 </button>
                             </form>
@@ -118,8 +132,8 @@
                          This is a Bootstrap interactive component that requires
                          bootstrap.bundle.min.js to work (loaded at the bottom). -->
                     <div class="mt-5 mb-4">
-                        <h4 class="mb-3 text-center">Frequently Asked Questions</h4>
-                        <div class="accordion" id="faqAccordion">
+                        <h4 class="mb-4 text-center font-serif-heading">Frequently Asked Questions</h4>
+                        <div class="accordion card-organic p-3 border-0" id="faqAccordion">
                             <div class="accordion-item">
                                 <h2 class="accordion-header">
                                     <!-- data-bs-toggle and data-bs-target are Bootstrap
@@ -207,14 +221,58 @@
                     isSubmitting: false,    // Tracks if form is currently being sent
                     statusMessage: '',      // Success/error message shown after submission
                     statusType: '',        // 'success' or 'error' — controls the alert color
-                    isDark: false          // Dark mode state
+                    isDark: false,          // Dark mode state
+                    currentUser: null,
+                    showProfileMenu: false
                 }
             },
             mounted() {
                 // Load dark mode preference from localStorage on page load
+                this.checkSession();
                 this.loadDarkMode();
             },
             methods: {
+                checkSession() {
+                    const userStr = localStorage.getItem('smartsync_user');
+                    if (!userStr) {
+                        window.location.href = 'landing.html';
+                        return;
+                    }
+                    try {
+                        this.currentUser = JSON.parse(userStr);
+                    } catch (e) {
+                        this.logout();
+                    }
+                },
+
+                logout() {
+                    localStorage.removeItem('smartsync_user');
+                    window.location.href = 'landing.html';
+                },
+
+                async deleteAccount() {
+                    if (!this.currentUser || !this.currentUser._id) return;
+                    
+                    if (!confirm("Are you sure you want to permanently delete your account? This action cannot be undone.")) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/users/${this.currentUser._id}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            this.logout();
+                        } else {
+                            const data = await response.json();
+                            alert(data.error || 'Failed to delete account.');
+                        }
+                    } catch (error) {
+                        console.error("Error deleting account:", error);
+                        alert("Network error. Please try again.");
+                    }
+                },
                 // Sends the contact form data to our /api/contact endpoint
                 async submitForm() {
                     this.isSubmitting = true;

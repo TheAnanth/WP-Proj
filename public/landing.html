@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to SmartSync</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="landing-page">
+    <div class="noise-overlay"></div>
+    
+    <!-- Organic Blobs Background -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div id="landing-app">
+        <!-- Floating Navbar -->
+        <div class="container pt-4">
+            <nav class="nav-organic d-flex justify-content-between align-items-center">
+                <div class="font-serif-heading fw-bold fs-4">⚡ SmartSync</div>
+                <div>
+                    <button class="dark-mode-btn text-dark" @click="toggleDarkMode" :title="isDark ? 'Light Mode' : 'Dark Mode'">
+                        {{ isDark ? '☀️' : '🌙' }}
+                    </button>
+                </div>
+            </nav>
+        </div>
+
+        <div class="container position-relative z-10 py-5 mt-5">
+            <div class="row align-items-center mb-5 pb-5">
+                <!-- Hero Text -->
+                <div class="col-lg-6 mb-5 mb-lg-0">
+                    <h1 class="display-3 fw-bold mb-4 font-serif-heading">Harmonize your home, naturally.</h1>
+                    <p class="fs-5 mb-5 opacity-75 font-sans-body" style="max-width: 500px;">
+                        Experience the wabi-sabi of smart living. Connect, automate, and flow with your environment using our tactile, grounded platform.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <button class="btn-organic" @click="showRegister = true">Get Started</button>
+                        <button class="btn-organic-outline" @click="showRegister = false">Sign In</button>
+                    </div>
+                </div>
+
+                <!-- Auth Card -->
+                <div class="col-lg-5 offset-lg-1">
+                    <div class="card-organic">
+                        <h3 class="font-serif-heading mb-4 text-center">{{ showRegister ? 'Join SmartSync' : 'Welcome Back' }}</h3>
+                        
+                        <form @submit.prevent="handleSubmit" class="font-sans-body">
+                            <div v-if="showRegister" class="mb-3">
+                                <label class="form-label fw-bold opacity-75">Full Name</label>
+                                <input type="text" class="form-control input-organic" v-model="form.name" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold opacity-75">Email</label>
+                                <input type="email" class="form-control input-organic" v-model="form.email" required 
+                                       pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$" title="Enter a valid email address">
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-bold opacity-75">Password</label>
+                                <input type="password" class="form-control input-organic" v-model="form.password" required
+                                       :pattern="showRegister ? '^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{6,}$' : '.*'" 
+                                       :title="showRegister ? 'Must be at least 6 chars and include letters and numbers' : ''">
+                                <small v-if="showRegister" class="text-muted d-block mt-2 px-2" style="font-size: 0.8rem;">
+                                    Must be at least 6 characters, containing letters and numbers.
+                                </small>
+                            </div>
+
+                            <div v-if="errorMsg" class="alert alert-danger rounded-4 text-center mb-4 py-2 border-0" style="background: var(--org-destructive); color: white;">
+                                {{ errorMsg }}
+                            </div>
+
+                            <button type="submit" class="btn-organic w-100" :disabled="loading">
+                                {{ loading ? 'Processing...' : (showRegister ? 'Create Account' : 'Sign In') }}
+                            </button>
+                        </form>
+
+                        <div class="text-center mt-4 pt-3 border-top" style="border-color: var(--org-border) !important;">
+                            <a href="#" class="text-decoration-none opacity-75 fw-bold" style="color: var(--org-primary);" @click.prevent="showRegister = !showRegister">
+                                {{ showRegister ? 'Already have an account? Sign in' : "Don't have an account? Sign up" }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Custom script for landing page -->
+    <script src="landing.js"></script>
+</body>
+</html>

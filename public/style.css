@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Nunito:wght@400;600;700&display=swap');
+
 /* ============================================================
    SmartSync — Custom Stylesheet
    ============================================================
@@ -21,6 +23,22 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
     --transition-speed: 0.25s;
+
+    /* Organic Design System Tokens (Light Mode) */
+    --org-bg: #FDFCF8;
+    --org-fg: #2C2C24;
+    --org-primary: #5D7052;
+    --org-primary-fg: #F3F4F1;
+    --org-secondary: #C18C5D;
+    --org-secondary-fg: #FFFFFF;
+    --org-accent: #E6DCCD;
+    --org-accent-fg: #4A4A40;
+    --org-muted: #F0EBE5;
+    --org-muted-fg: #78786C;
+    --org-border: #DED8CF;
+    --org-destructive: #A85448;
+    --shadow-soft: 0 4px 20px -2px rgba(93, 112, 82, 0.15);
+    --shadow-float: 0 10px 40px -10px rgba(193, 140, 93, 0.2);
 }
 
 /* --- Dark Mode Variables ---
@@ -37,6 +55,21 @@
     --border-color: #3d4250;
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+    /* Organic Design System Tokens (Dark Mode) */
+    --org-bg: #2C2C24;
+    --org-fg: #FDFCF8;
+    --org-primary: #6E8561; /* Lighter moss for dark mode */
+    --org-primary-fg: #F3F4F1;
+    --org-secondary: #D49D6A;
+    --org-secondary-fg: #2C2C24;
+    --org-accent: #4A4A40;
+    --org-accent-fg: #E6DCCD;
+    --org-muted: #3D3D32;
+    --org-muted-fg: #A3A393;
+    --org-border: #4A4A40;
+    --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+    --shadow-float: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
 }
 
 /* --- Base Styles --- */
@@ -186,4 +219,190 @@ body {
 .empty-state .emoji {
     font-size: 3rem;
     margin-bottom: 0.5rem;
+}
+
+/* ============================================================
+   Organic Design System Helper Classes (Landing Page Specific)
+   ============================================================ */
+
+.font-serif-heading {
+    font-family: 'Fraunces', serif;
+}
+
+.font-sans-body {
+    font-family: 'Nunito', sans-serif;
+}
+
+.landing-page {
+    background-color: var(--org-bg);
+    color: var(--org-fg);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.landing-page h1, .landing-page h2, .landing-page h3, .landing-page h4, .landing-page h5, .landing-page h6 {
+    font-family: 'Fraunces', serif;
+    color: var(--org-fg);
+}
+
+/* Noise Texture Overlay */
+.noise-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: 9999;
+}
+[data-bs-theme="dark"] .noise-overlay {
+    mix-blend-mode: overlay;
+    opacity: 0.06;
+}
+
+/* Organic Shapes & Blobs */
+.blob {
+    position: absolute;
+    filter: blur(60px);
+    z-index: 0;
+    opacity: 0.5;
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    animation: morph 8s ease-in-out infinite both alternate;
+}
+@keyframes morph {
+    0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+    100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+}
+
+.blob-1 {
+    top: -10%; left: -10%;
+    width: 50vw; height: 50vw;
+    background: var(--org-primary);
+}
+
+.blob-2 {
+    bottom: -20%; right: -10%;
+    width: 60vw; height: 60vw;
+    background: var(--org-secondary);
+}
+
+/* Organic Components */
+.card-organic {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--org-border);
+    border-radius: 2rem;
+    box-shadow: var(--shadow-soft);
+    padding: 2.5rem;
+    position: relative;
+    z-index: 10;
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+[data-bs-theme="dark"] .card-organic {
+    background-color: rgba(44, 44, 36, 0.7);
+}
+.card-organic:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-float);
+}
+
+.btn-organic {
+    background-color: var(--org-primary);
+    color: var(--org-primary-fg);
+    border-radius: 999px;
+    padding: 0.75rem 2rem;
+    font-weight: 700;
+    border: none;
+    box-shadow: var(--shadow-soft);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.btn-organic:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 24px -4px rgba(93,112,82,0.25);
+    color: var(--org-primary-fg);
+}
+.btn-organic:active {
+    transform: scale(0.95);
+}
+
+.btn-organic-outline {
+    background-color: transparent;
+    color: var(--org-secondary);
+    border-radius: 999px;
+    padding: 0.75rem 2rem;
+    font-weight: 700;
+    border: 2px solid var(--org-secondary);
+    transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+}
+.btn-organic-outline:hover {
+    transform: scale(1.05);
+    background-color: var(--org-secondary);
+    color: var(--org-secondary-fg);
+}
+
+.input-organic {
+    border-radius: 999px;
+    border: 1px solid var(--org-border);
+    background: rgba(255, 255, 255, 0.5);
+    padding: 0.75rem 1.5rem;
+    font-family: 'Nunito', sans-serif;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+[data-bs-theme="dark"] .input-organic {
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--org-fg);
+}
+[data-bs-theme="dark"] .input-organic option {
+    background-color: var(--org-bg);
+    color: var(--org-fg);
+}
+.input-organic:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(93, 112, 82, 0.3);
+    border-color: var(--org-primary);
+}
+
+/* Floating Navbar */
+.nav-organic {
+    position: sticky;
+    top: 1rem;
+    z-index: 1000;
+    background: rgba(253, 252, 248, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(222, 216, 207, 0.5);
+    border-radius: 999px;
+    padding: 0.5rem 1.5rem;
+    box-shadow: var(--shadow-soft);
+    margin-bottom: 2rem;
+}
+.nav-organic .nav-link {
+    color: var(--org-fg) !important;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+.nav-organic .nav-link:hover, .nav-organic .nav-link.active {
+    color: var(--org-primary) !important;
+}
+[data-bs-theme="dark"] .nav-organic {
+    background: rgba(44, 44, 36, 0.8);
+    border-color: rgba(74, 74, 64, 0.5);
+}
+
+/* Dropdown Menu Dark Mode */
+[data-bs-theme="dark"] .dropdown-menu {
+    background-color: var(--org-bg);
+    border-color: var(--org-border);
+}
+[data-bs-theme="dark"] .dropdown-item {
+    color: var(--org-fg);
+}
+[data-bs-theme="dark"] .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--org-fg);
+}
+[data-bs-theme="dark"] .dropdown-header {
+    color: var(--org-muted-fg);
 }

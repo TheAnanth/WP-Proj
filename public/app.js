@@ -20,6 +20,8 @@ createApp({
 
     data() {
         return {
+            currentUser: null,
+            showProfileMenu: false,
             devices: [],
             alerts: [],
             stats: {
@@ -28,19 +30,59 @@ createApp({
                 offline: 0
             },
 
-            newDevice: { name: '', type: '', ipAddress: '' },
+            newDevice: { name: '', type: '', subType: '', ipAddress: '' },
             formError: '',
+            editDevice: null,
+            editFormError: '',
+            deviceSubtypes: {
+                light: ['LED', 'Incandescent', 'Halogen'],
+                thermostat: ['Central', 'Window', 'Radiator'],
+                fan: ['Ceiling', 'Tower', 'Exhaust'],
+                fridge: ['Mini', 'Standard', 'Commercial'],
+                washer: ['Front Load', 'Top Load', 'Compact'],
+                dryer: ['Electric', 'Gas', 'Heat Pump'],
+                oven: ['Electric', 'Gas', 'Convection'],
+                dishwasher: ['Built-in', 'Portable', 'Countertop'],
+                vacuum: ['Robot', 'Upright', 'Stick'],
+                tv: ['LED', 'OLED', 'QLED'],
+                camera: ['Indoor', 'Outdoor', 'Doorbell'],
+                speaker: ['Smart', 'Bluetooth', 'Soundbar'],
+                purifier: ['HEPA', 'Ionizer', 'UV'],
+                blinds: ['Roller', 'Venetian', 'Vertical'],
+                sprinkler: ['Oscillating', 'Rotary', 'Drip'],
+                mower: ['Electric', 'Gas', 'Robot'],
+                pool_pump: ['Single Speed', 'Dual Speed', 'Variable Speed'],
+                outdoor_light: ['Floodlight', 'Path Light', 'Spotlight'],
+                weather_station: ['Basic', 'Advanced', 'Professional'],
+                soil_sensor: ['Moisture', 'pH', 'Nutrient'],
+                garage: ['Sectional', 'Roll-up', 'Tilt-up'],
+                lock: ['Deadbolt', 'Lever', 'Padlock'],
+                plug: ['Standard', 'Heavy Duty', 'Outdoor'],
+                smoke_detector: ['Photoelectric', 'Ionization', 'Dual Sensor'],
+                doorbell: ['Wired', 'Battery', 'Video']
+            },
 
             searchQuery: '',
             filterType: 'all',
 
             isDark: false,
 
-            tempUnit: '°C'
+            tempUnit: '°C',
+
+            chartTimeframe: 'monthly',
+            chartInstance: null
         }
     },
 
     computed: {
+        availableSubtypes() {
+            if (!this.newDevice.type) return [];
+            return this.deviceSubtypes[this.newDevice.type] || [];
+        },
+        editAvailableSubtypes() {
+            if (!this.editDevice || !this.editDevice.type) return [];
+            return this.deviceSubtypes[this.editDevice.type] || [];
+        },
 
         filteredDevices() {
             let result = this.devices;
@@ -69,6 +111,7 @@ createApp({
     },
 
     mounted() {
+        this.checkSession();
         this.fetchDevices();
         this.fetchAlerts();
         this.fetchStats();
@@ -76,6 +119,97 @@ createApp({
     },
 
     methods: {
+        checkSession() {
+            const userStr = localStorage.getItem('smartsync_user');
+            if (!userStr) {
+                // If not logged in, redirect to landing page
+                window.location.href = 'landing.html';
+                return;
+            }
+            try {
+                this.currentUser = JSON.parse(userStr);
+            } catch (e) {
+                this.logout();
+            }
+        },
+
+        logout() {
+            localStorage.removeItem('smartsync_user');
+            window.location.href = 'landing.html';
+        },
+
+        async deleteAccount() {
+            if (!this.currentUser || !this.currentUser._id) return;
+            
+            if (!confirm("Are you sure you want to permanently delete your account? This action cannot be undone.")) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/users/${this.currentUser._id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    this.logout();
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to delete account.');
+                }
+            } catch (error) {
+                console.error("Error deleting account:", error);
+                alert("Network error. Please try again.");
+            }
+        },
+
+        openEditModal(device) {
+            this.editDevice = { ...device };
+            this.editFormError = '';
+            const modalEl = document.getElementById('editDeviceModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        },
+
+        async saveDeviceEdit() {
+            this.editFormError = '';
+            if (!this.editDevice.name || !this.editDevice.ipAddress) {
+                this.editFormError = 'Name and IP are required.';
+                return;
+            }
+            if (this.editDevice.name.length < 3) {
+                this.editFormError = 'Name must be at least 3 characters.';
+                return;
+            }
+            if (!this.validateIP(this.editDevice.ipAddress)) {
+                this.editFormError = 'Invalid IP address format.';
+                return;
+            }
+            try {
+                const { _id, ...updates } = this.editDevice;
+                const response = await fetch('/api/devices/' + _id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                });
+                if (response.ok) {
+                    this.refreshAll();
+                    const modalEl = document.getElementById('editDeviceModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                    this.editDevice = null;
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    this.editFormError = errorData.error || 'Failed to update device.';
+                }
+            } catch (error) {
+                console.error('Error updating device:', error);
+                this.editFormError = 'An unexpected error occurred.';
+            }
+        },
 
         async fetchDevices() {
             try {
@@ -83,6 +217,9 @@ createApp({
                 const response = await fetch('/api/devices');
 
                 this.devices = await response.json();
+                if (document.getElementById('energyChart')) {
+                    this.renderChart();
+                }
             } catch (error) {
                 console.error("Error fetching devices:", error);
             }
@@ -219,17 +356,36 @@ createApp({
         },
 
         deviceIcon(type) {
-
-            const icons = {
-                light: '💡',
-                lock: '🔒',
-                camera: '📷',
-                thermostat: '🌡️',
-                other: '🔌'
-            };
-
-            return icons[type] || '📱';
-        },
+    const icons = {
+        light: '💡',
+        lock: '🔒',
+        camera: '📷',
+        thermostat: '🌡️',
+        plug: '🔌',
+        speaker: '🔊',
+        tv: '📺',
+        fan: '💨',
+        purifier: '🍃',
+        blinds: '🪟',
+        fridge: '❄️',
+        washer: '🧺',
+        dryer: '☀️',
+        oven: '🔥',
+        dishwasher: '🍽️',
+        vacuum: '🤖',
+        sprinkler: '💦',
+        mower: '🚜',
+        pool_pump: '🏊',
+        outdoor_light: '🏮',
+        weather_station: '⛅',
+        soil_sensor: '🌱',
+        doorbell: '🔔',
+        smoke_detector: '🚨',
+        garage: '🚪',
+        other: '❓'
+    };
+    return icons[type] || '📱';
+},
 
         displayTemp(celsiusValue) {
             if (this.tempUnit === '°F') {
@@ -282,6 +438,10 @@ createApp({
             );
 
             localStorage.setItem('smartsync-dark-mode', this.isDark);
+            
+            if (document.getElementById('energyChart')) {
+                this.renderChart();
+            }
         },
 
         loadDarkMode() {
@@ -351,7 +511,160 @@ createApp({
             reader.readAsText(file);
 
             event.target.value = '';
+        },
+
+        renderChart() {
+            const ctx = document.getElementById('energyChart');
+            if (!ctx) return;
+
+            if (this.chartInstance) {
+                this.chartInstance.destroy();
+            }            // Define base daily consumption in kWh
+            const baseRates = {
+                light: 0.05,
+                lock: 0.005,
+                camera: 0.15,
+                thermostat: 0.05,
+                plug: 0.1,
+                speaker: 0.05,
+                tv: 0.5,
+                fan: 0.2,
+                purifier: 0.4,
+                blinds: 0.01,
+                fridge: 1.5,
+                washer: 0.5,
+                dryer: 2.5,
+                oven: 1.0,
+                dishwasher: 1.2,
+                vacuum: 0.2,
+                sprinkler: 0.02,
+                mower: 0.3,
+                pool_pump: 3.0,
+                outdoor_light: 0.1,
+                weather_station: 0.01,
+                soil_sensor: 0.001,
+                doorbell: 0.1,
+                smoke_detector: 0.001,
+                garage: 0.05,
+                other: 0.1
+            };
+
+
+            let points, labelPrefix, maxAxis;
+            
+            if (this.chartTimeframe === 'hourly') {
+                points = 24;
+                labelPrefix = 'Hour ';
+                maxAxis = 24;
+            } else if (this.chartTimeframe === 'yearly') {
+                points = 12;
+                labelPrefix = 'Month ';
+                maxAxis = 12;
+            } else {
+                // monthly
+                points = 30;
+                labelPrefix = 'Day ';
+                maxAxis = 30;
+            }
+
+            const xLabels = Array.from({length: points}, (_, i) => i + 1);
+
+            // Generate datasets
+            const datasets = this.devices.map((device, index) => {
+                const dailyRate = baseRates[device.type] || 0.1;
+                
+                let data = [];
+                for (let i = 1; i <= points; i++) {
+                    let consumption = 0;
+                    if (this.chartTimeframe === 'hourly') {
+                        consumption = (dailyRate / 24) * i; // Cumulative hourly over 1 day
+                    } else if (this.chartTimeframe === 'monthly') {
+                        consumption = dailyRate * i; // Cumulative daily over 1 month
+                    } else {
+                        // yearly (months)
+                        consumption = (dailyRate * 30) * i; // Cumulative monthly over 1 year
+                    }
+                    data.push({ x: i, y: parseFloat(consumption.toFixed(4)) });
+                }
+
+                const colors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6f42c1', '#fd7e14'];
+                const color = colors[index % colors.length];
+
+                return {
+                    label: device.name + ' (' + device.type + ')',
+                    data: data,
+                    borderColor: color,
+                    backgroundColor: color,
+                    type: 'scatter',
+                    showLine: false,
+                    pointRadius: 5,
+                    pointHoverRadius: 8
+                };
+            });
+
+            this.chartInstance = new Chart(ctx, {
+                data: {
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            min: 1,
+                            max: maxAxis,
+                            title: {
+                                display: true,
+                                text: this.chartTimeframe.charAt(0).toUpperCase() + this.chartTimeframe.slice(1) + ' Timeline',
+                                color: this.isDark ? '#f8f9fa' : '#6c757d'
+                            },
+                            ticks: {
+                                color: this.isDark ? '#ced4da' : '#6c757d'
+                            },
+                            grid: {
+                                color: this.isDark ? '#444' : '#e9ecef'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Energy (kWh)',
+                                color: this.isDark ? '#f8f9fa' : '#6c757d'
+                            },
+                            ticks: {
+                                color: this.isDark ? '#ced4da' : '#6c757d'
+                            },
+                            grid: {
+                                color: this.isDark ? '#444' : '#e9ecef',
+                                drawOnChartArea: true
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: this.isDark ? '#f8f9fa' : '#212529'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y + ' kWh';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
     }
 
 }).mount('#app');
+
+
+
+
+
+
