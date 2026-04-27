@@ -234,7 +234,8 @@
             methods: {
                 checkSession() {
                     const userStr = localStorage.getItem('smartsync_user');
-                    if (!userStr) {
+                    const token = localStorage.getItem('smartsync_token');
+                    if (!userStr || !token) {
                         window.location.href = 'landing.html';
                         return;
                     }
@@ -245,8 +246,17 @@
                     }
                 },
 
+                authHeaders() {
+                    const token = localStorage.getItem('smartsync_token');
+                    return {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    };
+                },
+
                 logout() {
                     localStorage.removeItem('smartsync_user');
+                    localStorage.removeItem('smartsync_token');
                     window.location.href = 'landing.html';
                 },
 
@@ -259,7 +269,8 @@
 
                     try {
                         const response = await fetch(`/api/users/${this.currentUser._id}`, {
-                            method: 'DELETE'
+                            method: 'DELETE',
+                            headers: this.authHeaders()
                         });
 
                         if (response.ok) {

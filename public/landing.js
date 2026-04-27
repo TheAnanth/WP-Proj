@@ -81,6 +81,7 @@ createApp({
                 } else {
                     // Save mock token/user to localStorage
                     localStorage.setItem('smartsync_user', JSON.stringify(data.user));
+                    localStorage.setItem('smartsync_token', data.token);
                     // Redirect to dashboard
                     window.location.href = 'index.html';
                 }

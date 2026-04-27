@@ -1,14 +1,14 @@
 
 
 const express = require('express');
-
 const { MongoClient, ObjectId } = require('mongodb');
-
 const cors = require('cors');
-
 require('dotenv').config({ quiet: true });
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const app = express();
+const JWT_SECRET = process.env.JWT_SECRET || 'smartsync-super-secret-key';
 
 const PORT = 3000;
 
@@ -17,6 +17,18 @@ app.use(cors());
 app.use(express.json());
 
 app.use(express.static('public'));
+
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access denied. No token provided.' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Invalid token.' });
+        req.user = user;
+        next();
+    });
+}
 
 const mongoURI = process.env.MONGO_URI;
 
@@ -114,19 +126,21 @@ function seedMemoryStore() {
     }
 }
 
-function addAlert(message) {
+function addAlert(message, userId = null) {
     const now = new Date();
     memoryAlerts.unshift({
         _id: `alert-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        userId: userId,
+        time: now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
         message,
         timestamp: now
     });
 
-    memoryAlerts = memoryAlerts.slice(0, 50);
+    memoryAlerts = memoryAlerts.slice(0, 500); // Increased size to handle multiple users
 }
 
-seedMemoryStore();
+// Do not pre-seed memory store globally, devices should be created per user now.
+// seedMemoryStore();
 
 MongoClient.connect(mongoURI)
     .then(client => {
@@ -137,18 +151,18 @@ MongoClient.connect(mongoURI)
 
         initializeDatabase();
     })
-    .catch(() => {
+    .catch((err) => {
+        console.error('Failed to connect to MongoDB:', err);
         useMemoryStore = true;
-        seedMemoryStore();
     });
 
-app.get('/api/devices', async (req, res) => {
+app.get('/api/devices', authenticateToken, async (req, res) => {
     try {
         if (useMemoryStore) {
-            return res.json(memoryDevices);
+            return res.json(memoryDevices.filter(d => d.userId === req.user.id));
         }
 
-        const devices = await db.collection('devices').find().toArray();
+        const devices = await db.collection('devices').find({ userId: req.user.id }).toArray();
         res.json(devices);
     } catch (err) {
 
@@ -156,40 +170,42 @@ app.get('/api/devices', async (req, res) => {
     }
 });
 
-app.get('/api/devices/stats', async (req, res) => {
+app.get('/api/devices/stats', authenticateToken, async (req, res) => {
     try {
         if (useMemoryStore) {
-            const total = memoryDevices.length;
-
-            const active = memoryDevices.filter(d => d.isOn).length;
+            const userDevices = memoryDevices.filter(d => d.userId === req.user.id);
+            const total = userDevices.length;
+            const active = userDevices.filter(d => d.isOn).length;
             return res.json({ total, active, offline: total - active });
         }
 
-        const total = await db.collection('devices').countDocuments({});
-
-        const active = await db.collection('devices').countDocuments({ isOn: true });
+        const total = await db.collection('devices').countDocuments({ userId: req.user.id });
+        const active = await db.collection('devices').countDocuments({ userId: req.user.id, isOn: true });
         res.json({ total, active, offline: total - active });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-app.post('/api/devices/toggle', async (req, res) => {
+app.post('/api/devices/toggle', authenticateToken, async (req, res) => {
     try {
 
         const { deviceId, newState, name } = req.body;
 
         if (useMemoryStore) {
 
-            const device = memoryDevices.find(d => d._id === deviceId);
+            const device = memoryDevices.find(d => d._id === deviceId && d.userId === req.user.id);
             if (!device) {
                 return res.status(404).json({ error: 'Device not found' });
             }
             device.isOn = newState;
             const statusText = newState ? 'turned ON' : 'turned OFF';
-            addAlert(`${name} was ${statusText}.`);
+            addAlert(`${name} was ${statusText}.`, req.user.id);
             return res.json({ success: true });
         }
+
+        const device = await db.collection('devices').findOne({ _id: new ObjectId(deviceId), userId: req.user.id });
+        if (!device) return res.status(404).json({ error: 'Device not found' });
 
         await db.collection('devices').updateOne(
             { _id: new ObjectId(deviceId) },
@@ -197,9 +213,10 @@ app.post('/api/devices/toggle', async (req, res) => {
         );
 
         const statusText = newState ? 'turned ON' : 'turned OFF';
-        const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
         await db.collection('alerts').insertOne({
+            userId: req.user.id,
             time: now,
             message: `${name} was ${statusText}.`,
             timestamp: new Date()
@@ -211,14 +228,13 @@ app.post('/api/devices/toggle', async (req, res) => {
     }
 });
 
-app.get('/api/alerts', async (req, res) => {
+app.get('/api/alerts', authenticateToken, async (req, res) => {
     try {
         if (useMemoryStore) {
-
-            return res.json(memoryAlerts.slice(0, 10));
+            return res.json(memoryAlerts.filter(a => a.userId === req.user.id).slice(0, 10));
         }
         const alerts = await db.collection('alerts')
-            .find()
+            .find({ userId: req.user.id })
             .sort({ timestamp: -1 })
             .limit(10)
             .toArray();
@@ -228,11 +244,12 @@ app.get('/api/alerts', async (req, res) => {
     }
 });
 
-app.post('/api/devices', async (req, res) => {
+app.post('/api/devices', authenticateToken, async (req, res) => {
     try {
 
         const newDevice = {
             name: String(req.body.name || '').trim(),
+            userId: req.user.id,
             type: req.body.type,
             subType: String(req.body.subType || '').trim(),
             ipAddress: String(req.body.ipAddress || '').trim(),
@@ -258,14 +275,15 @@ app.post('/api/devices', async (req, res) => {
                 _id: `dev-${Date.now()}`
             };
             memoryDevices.push(createdDevice);
-            addAlert(`New device added: ${newDevice.name}`);
+            addAlert(`New device added: ${newDevice.name}`, req.user.id);
             return res.json({ success: true, insertedId: createdDevice._id });
         }
 
         const result = await db.collection('devices').insertOne(newDevice);
 
-        const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
         await db.collection('alerts').insertOne({
+            userId: req.user.id,
             time: now,
             message: `New device added: ${newDevice.name}`,
             timestamp: new Date()
@@ -277,14 +295,14 @@ app.post('/api/devices', async (req, res) => {
     }
 });
 
-app.put('/api/devices/:id', async (req, res) => {
+app.put('/api/devices/:id', authenticateToken, async (req, res) => {
     try {
         const deviceId = req.params.id;
 
         const updates = { ...req.body };
 
         if (useMemoryStore) {
-            const device = memoryDevices.find(d => d._id === deviceId);
+            const device = memoryDevices.find(d => d._id === deviceId && d.userId === req.user.id);
             if (!device) {
                 return res.status(404).json({ error: 'Device not found' });
             }
@@ -302,7 +320,7 @@ app.put('/api/devices/:id', async (req, res) => {
 
             Object.assign(device, updates);
             if (updates.value !== undefined) {
-                addAlert(`${device.name} temperature set to ${updates.value}°C.`);
+                addAlert(`${device.name} temperature set to ${updates.value}°C.`, req.user.id);
             }
             return res.json({ success: true });
         }
@@ -310,7 +328,7 @@ app.put('/api/devices/:id', async (req, res) => {
         let deviceForAlert = null;
 
         if (updates.value !== undefined) {
-            const device = await db.collection('devices').findOne({ _id: new ObjectId(deviceId) });
+            const device = await db.collection('devices').findOne({ _id: new ObjectId(deviceId), userId: req.user.id });
             if (!device) {
                 return res.status(404).json({ error: 'Device not found' });
             }
@@ -327,13 +345,14 @@ app.put('/api/devices/:id', async (req, res) => {
         }
 
         await db.collection('devices').updateOne(
-            { _id: new ObjectId(deviceId) },
+            { _id: new ObjectId(deviceId), userId: req.user.id },
             { $set: updates }
         );
 
         if (updates.value !== undefined) {
-            const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            const now = new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
             await db.collection('alerts').insertOne({
+                userId: req.user.id,
                 time: now,
                 message: `${deviceForAlert.name} temperature set to ${updates.value}°C.`,
                 timestamp: new Date()
@@ -346,26 +365,28 @@ app.put('/api/devices/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/devices/:id', async (req, res) => {
+app.delete('/api/devices/:id', authenticateToken, async (req, res) => {
     try {
         const deviceId = req.params.id;
 
         if (useMemoryStore) {
             const before = memoryDevices.length;
 
-            memoryDevices = memoryDevices.filter(device => device._id !== deviceId);
+            memoryDevices = memoryDevices.filter(device => !(device._id === deviceId && device.userId === req.user.id));
             if (memoryDevices.length === before) {
 
                 return res.status(404).json({ error: 'Device not found' });
             }
-            addAlert('A device was removed.');
+            addAlert('A device was removed.', req.user.id);
             return res.json({ success: true });
         }
 
-        await db.collection('devices').deleteOne({ _id: new ObjectId(deviceId) });
+        const deleteResult = await db.collection('devices').deleteOne({ _id: new ObjectId(deviceId), userId: req.user.id });
+        if (deleteResult.deletedCount === 0) return res.status(404).json({ error: 'Device not found' });
 
-        const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
         await db.collection('alerts').insertOne({
+            userId: req.user.id,
             time: now,
             message: 'A device was removed.',
             timestamp: new Date()
@@ -377,7 +398,7 @@ app.delete('/api/devices/:id', async (req, res) => {
     }
 });
 
-app.post('/api/devices/import', async (req, res) => {
+app.post('/api/devices/import', authenticateToken, async (req, res) => {
     try {
         const importedDevices = req.body;
 
@@ -390,6 +411,7 @@ app.post('/api/devices/import', async (req, res) => {
 
             return {
                 name: String(d.name || 'Unnamed Device').trim(),
+                userId: req.user.id,
                 type: normalizedType,
                 ipAddress: String(d.ipAddress || '0.0.0.0').trim(),
                 isOn: false,
@@ -401,7 +423,7 @@ app.post('/api/devices/import', async (req, res) => {
 
         const existingDevices = useMemoryStore
             ? memoryDevices
-            : await db.collection('devices').find({}, { projection: { name: 1, ipAddress: 1 } }).toArray();
+            : await db.collection('devices').find({ userId: req.user.id }, { projection: { name: 1, ipAddress: 1 } }).toArray();
 
         const duplicateConflicts = collectDuplicateDeviceConflicts(existingDevices, cleanDevices);
         if (duplicateConflicts.length > 0) {
@@ -422,14 +444,15 @@ app.post('/api/devices/import', async (req, res) => {
                 d._id = `dev-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
                 memoryDevices.push(d);
             });
-            addAlert(`${cleanDevices.length} device(s) imported successfully.`);
+            addAlert(`${cleanDevices.length} device(s) imported successfully.`, req.user.id);
             return res.json({ success: true, count: cleanDevices.length });
         }
 
         await db.collection('devices').insertMany(cleanDevices);
 
-        const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
         await db.collection('alerts').insertOne({
+            userId: req.user.id,
             time: now,
             message: `${cleanDevices.length} device(s) imported successfully.`,
             timestamp: new Date()
@@ -492,10 +515,12 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: 'Password must be at least 6 characters and contain letters and numbers.' });
         }
 
+        const hashedPassword = await bcrypt.hash(password, 10);
+
         const newUser = {
             name,
             email: email.toLowerCase(),
-            password, // Plain text for mock purposes; in production, use bcrypt
+            password: hashedPassword,
             createdAt: new Date()
         };
 
@@ -505,14 +530,16 @@ app.post('/api/auth/register', async (req, res) => {
             
             newUser._id = `user-${Date.now()}`;
             memoryUsers.push(newUser);
-            return res.json({ success: true, user: { _id: newUser._id, name: newUser.name, email: newUser.email } });
+            const token = jwt.sign({ id: newUser._id, email: newUser.email }, JWT_SECRET, { expiresIn: '7d' });
+            return res.json({ success: true, token, user: { _id: newUser._id, name: newUser.name, email: newUser.email } });
         }
 
         const existingUser = await db.collection('users').findOne({ email: newUser.email });
         if (existingUser) return res.status(409).json({ error: 'Email already exists.' });
 
         const result = await db.collection('users').insertOne(newUser);
-        res.json({ success: true, user: { _id: result.insertedId, name: newUser.name, email: newUser.email } });
+        const token = jwt.sign({ id: result.insertedId.toString(), email: newUser.email }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({ success: true, token, user: { _id: result.insertedId, name: newUser.name, email: newUser.email } });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -524,15 +551,23 @@ app.post('/api/auth/login', async (req, res) => {
         if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
 
         if (useMemoryStore) {
-            const user = memoryUsers.find(u => u.email === email.toLowerCase() && u.password === password);
+            const user = memoryUsers.find(u => u.email === email.toLowerCase());
             if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
-            return res.json({ success: true, user: { _id: user._id, name: user.name, email: user.email } });
+            const valid = await bcrypt.compare(password, user.password);
+            if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
+            
+            const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+            return res.json({ success: true, token, user: { _id: user._id, name: user.name, email: user.email } });
         }
 
-        const user = await db.collection('users').findOne({ email: email.toLowerCase(), password });
+        const user = await db.collection('users').findOne({ email: email.toLowerCase() });
         if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
         
-        res.json({ success: true, user: { _id: user._id, name: user.name, email: user.email } });
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
+        
+        const token = jwt.sign({ id: user._id.toString(), email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({ success: true, token, user: { _id: user._id, name: user.name, email: user.email } });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

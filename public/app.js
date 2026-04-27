@@ -121,8 +121,8 @@ createApp({
     methods: {
         checkSession() {
             const userStr = localStorage.getItem('smartsync_user');
-            if (!userStr) {
-                // If not logged in, redirect to landing page
+            const token = localStorage.getItem('smartsync_token');
+            if (!userStr || !token) {
                 window.location.href = 'landing.html';
                 return;
             }
@@ -133,8 +133,17 @@ createApp({
             }
         },
 
+        authHeaders() {
+            const token = localStorage.getItem('smartsync_token');
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+        },
+
         logout() {
             localStorage.removeItem('smartsync_user');
+            localStorage.removeItem('smartsync_token');
             window.location.href = 'landing.html';
         },
 
@@ -147,7 +156,8 @@ createApp({
 
             try {
                 const response = await fetch(`/api/users/${this.currentUser._id}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: this.authHeaders()
                 });
 
                 if (response.ok) {
@@ -190,7 +200,7 @@ createApp({
                 const { _id, ...updates } = this.editDevice;
                 const response = await fetch('/api/devices/' + _id, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.authHeaders(),
                     body: JSON.stringify(updates)
                 });
                 if (response.ok) {
@@ -213,9 +223,11 @@ createApp({
 
         async fetchDevices() {
             try {
-
-                const response = await fetch('/api/devices');
-
+                const response = await fetch('/api/devices', { headers: this.authHeaders() });
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) this.logout();
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 this.devices = await response.json();
                 if (document.getElementById('energyChart')) {
                     this.renderChart();
@@ -227,7 +239,11 @@ createApp({
 
         async fetchAlerts() {
             try {
-                const response = await fetch('/api/alerts');
+                const response = await fetch('/api/alerts', { headers: this.authHeaders() });
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) this.logout();
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 this.alerts = await response.json();
             } catch (error) {
                 console.error("Error fetching alerts:", error);
@@ -236,7 +252,11 @@ createApp({
 
         async fetchStats() {
             try {
-                const response = await fetch('/api/devices/stats');
+                const response = await fetch('/api/devices/stats', { headers: this.authHeaders() });
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) this.logout();
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 this.stats = await response.json();
             } catch (error) {
                 console.error("Error fetching stats:", error);
@@ -265,10 +285,9 @@ createApp({
             }
 
             try {
-
                 const response = await fetch('/api/devices', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.authHeaders(),
                     body: JSON.stringify(this.newDevice)
                 });
 
@@ -289,15 +308,16 @@ createApp({
 
         async deleteDevice(deviceId) {
 
-            if (!confirm("Are you sure you want to delete this device?")) return;
-
-            try {
-
-                await fetch(`/api/devices/${deviceId}`, { method: 'DELETE' });
-
-                this.refreshAll();
-            } catch (error) {
-                console.error("Failed to delete device:", error);
+            if (confirm('Are you sure you want to remove this device?')) {
+                try {
+                    await fetch(`/api/devices/${deviceId}`, { 
+                        method: 'DELETE',
+                        headers: this.authHeaders()
+                    });
+                    this.fetchDevices();
+                } catch (error) {
+                    console.error("Failed to delete device:", error);
+                }
             }
         },
 
@@ -313,8 +333,7 @@ createApp({
             try {
                 await fetch('/api/devices/toggle', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-
+                    headers: this.authHeaders(),
                     body: JSON.stringify({
                         deviceId: device._id,
                         newState: newState,
@@ -339,7 +358,7 @@ createApp({
             try {
                 const response = await fetch(`/api/devices/${device._id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.authHeaders(),
                     body: JSON.stringify({ value: device.value })
                 });
 
@@ -488,7 +507,7 @@ createApp({
 
                     const response = await fetch('/api/devices/import', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: this.authHeaders(),
                         body: JSON.stringify(importedDevices)
                     });
 
