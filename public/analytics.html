@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,47 +11,62 @@
     <!-- Our custom CSS file — loaded AFTER Bootstrap so our styles can override it -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="landing-page">
+    <div class="noise-overlay"></div>
 
     <div id="app">
         
         <!-- ======================== NAVBAR ======================== -->
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-            <div class="container">
-                <a class="navbar-brand fw-bold" href="index.html">⚡ SmartSync</a>
+        <div class="container pt-4">
+            <nav class="nav-organic d-flex justify-content-between align-items-center mb-5">
+                <a class="navbar-brand font-serif-heading fw-bold fs-4 text-decoration-none" style="color: var(--org-fg);" href="index.html">⚡ SmartSync</a>
                 
                 <div class="d-flex align-items-center gap-3">
                     <a class="nav-link text-light" href="index.html">Dashboard</a>
                     <a class="nav-link text-light active" href="analytics.html">Analytics</a>
                     <a class="nav-link text-light" href="contact.html">Contact Us</a>
                     
-                    <button class="dark-mode-btn" @click="toggleDarkMode" :title="isDark ? 'Light Mode' : 'Dark Mode'">
+                    <button class="dark-mode-btn" style="color: var(--org-fg); border-color: var(--org-border);" @click="toggleDarkMode" :title="isDark ? 'Light Mode' : 'Dark Mode'">
                         {{ isDark ? '☀️' : '🌙' }}
                     </button>
-                </div>
-            </div>
-        </nav>
 
-        <div class="container">
+                    <!-- Hover Profile Menu -->
+                    <div class="dropdown profile-dropdown" v-if="currentUser" @mouseenter="showProfileMenu = true" @mouseleave="showProfileMenu = false">
+                        <button class="btn btn-organic rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; padding: 0;">
+                            {{ currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U' }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" :class="{ 'show': showProfileMenu }" style="position: absolute; right: 0; top: 100%; border-radius: 1rem; border: 1px solid var(--org-border);">
+                            <li><h6 class="dropdown-header font-sans-body">{{ currentUser.name }}</h6></li>
+                            <li><span class="dropdown-item-text text-muted small font-sans-body">{{ currentUser.email }}</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button class="dropdown-item text-danger font-sans-body" @click="logout">Logout</button></li>
+                            <li><button class="dropdown-item text-danger fw-bold font-sans-body" @click="deleteAccount">Delete Account</button></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <div class="container position-relative z-10">
 
             <!-- ======================== STATS BAR ======================== -->
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-number text-primary">{{ stats.total }}</div>
-                        <div class="stat-label">Total Devices</div>
+                    <div class="card-organic p-4 text-center">
+                        <div class="stat-number font-serif-heading" style="color: var(--org-primary);">{{ stats.total }}</div>
+                        <div class="stat-label font-sans-body">Total Devices</div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-number text-success">{{ stats.active }}</div>
-                        <div class="stat-label">Active</div>
+                    <div class="card-organic p-4 text-center">
+                        <div class="stat-number font-serif-heading" style="color: var(--org-secondary);">{{ stats.active }}</div>
+                        <div class="stat-label font-sans-body">Active</div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-number text-secondary">{{ stats.offline }}</div>
-                        <div class="stat-label">Offline</div>
+                    <div class="card-organic p-4 text-center">
+                        <div class="stat-number font-serif-heading" style="color: var(--org-muted-fg);">{{ stats.offline }}</div>
+                        <div class="stat-label font-sans-body">Offline</div>
                     </div>
                 </div>
             </div>
@@ -59,12 +74,12 @@
             <div class="row">
                 <!-- ======================== MAIN SECTION (Left Column) ======================== -->
                 <div class="col-md-8">
-                    <h2 class="mb-3">Energy Consumption Analytics</h2>
-                    <div class="card mb-4 shadow-sm border-0">
-                        <div class="card-body">
+                    <h2 class="mb-3 font-serif-heading">Energy Consumption Analytics</h2>
+                    <div class="card-organic p-4 mb-4">
+                        <div>
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <p class="text-muted mb-0">Projected energy use based on standard device values.</p>
-                                <select class="form-select w-auto" v-model="chartTimeframe" @change="renderChart">
+                                <select class="form-select input-organic w-auto" v-model="chartTimeframe" @change="renderChart">
                                     <option value="hourly">Hourly Projection (24 Hours)</option>
                                     <option value="monthly">Monthly Projection (30 Days)</option>
                                     <option value="yearly">Yearly Projection (12 Months)</option>
@@ -74,15 +89,15 @@
                         </div>
                     </div>
 
-                    <h2 class="mb-3">Data Management</h2>
-                    <div class="card mb-4 shadow-sm border-0">
-                        <div class="card-body">
+                    <h2 class="mb-3 font-serif-heading mt-5">Data Management</h2>
+                    <div class="card-organic p-4 mb-4">
+                        <div>
                             <p class="text-muted mb-3">Export your synced devices to a JSON file or import a previous backup.</p>
                             <div class="data-actions d-flex gap-2">
-                                <button class="btn btn-outline-primary" @click="exportToJSON">
+                                <button class="btn-organic-outline px-4" @click="exportToJSON">
                                     📥 Export JSON
                                 </button>
-                                <label class="btn btn-outline-secondary mb-0">
+                                <label class="btn-organic-outline px-4 mb-0" style="cursor: pointer;">
                                     📤 Import JSON
                                     <input type="file" accept=".json" @change="importJSON" 
                                             ref="fileInput" style="display: none;">
@@ -94,11 +109,11 @@
 
                 <!-- ======================== SIDEBAR (Right Column) ======================== -->
                 <div class="col-md-4">
-                    <h2 class="mb-3">
+                    <h2 class="mb-3 font-serif-heading">
                         Activity Log
-                        <button id="toggle-alerts" class="btn btn-sm btn-outline-secondary float-end mt-1">Hide</button>
+                        <button id="toggle-alerts" class="btn btn-sm btn-organic-outline float-end mt-1 py-1 px-3">Hide</button>
                     </h2>
-                    <ul class="list-group shadow-sm" id="alerts-box">
+                    <ul class="list-group shadow-sm border-0 rounded-4 overflow-hidden" id="alerts-box">
                         <li class="list-group-item list-group-item-light border-0 border-bottom" 
                             v-for="alert in alerts" :key="alert._id">
                             <strong class="text-primary">[{{ alert.time }}]</strong> <br>

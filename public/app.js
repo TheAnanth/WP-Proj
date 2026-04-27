@@ -1,4 +1,4 @@
-﻿
+
 
 $(document).ready(function() {
 
@@ -20,6 +20,8 @@ createApp({
 
     data() {
         return {
+            currentUser: null,
+            showProfileMenu: false,
             devices: [],
             alerts: [],
             stats: {
@@ -109,6 +111,7 @@ createApp({
     },
 
     mounted() {
+        this.checkSession();
         this.fetchDevices();
         this.fetchAlerts();
         this.fetchStats();
@@ -116,6 +119,49 @@ createApp({
     },
 
     methods: {
+        checkSession() {
+            const userStr = localStorage.getItem('smartsync_user');
+            if (!userStr) {
+                // If not logged in, redirect to landing page
+                window.location.href = 'landing.html';
+                return;
+            }
+            try {
+                this.currentUser = JSON.parse(userStr);
+            } catch (e) {
+                this.logout();
+            }
+        },
+
+        logout() {
+            localStorage.removeItem('smartsync_user');
+            window.location.href = 'landing.html';
+        },
+
+        async deleteAccount() {
+            if (!this.currentUser || !this.currentUser._id) return;
+            
+            if (!confirm("Are you sure you want to permanently delete your account? This action cannot be undone.")) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/users/${this.currentUser._id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    this.logout();
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to delete account.');
+                }
+            } catch (error) {
+                console.error("Error deleting account:", error);
+                alert("Network error. Please try again.");
+            }
+        },
+
         openEditModal(device) {
             this.editDevice = { ...device };
             this.editFormError = '';

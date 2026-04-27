@@ -28,6 +28,7 @@ let useMemoryStore = true;
 
 let memoryDevices = [];
 let memoryAlerts = [];
+let memoryUsers = []; // Stores users in memory if MongoDB is unavailable
 
 const MIN_THERMOSTAT_TEMP_C = 5;
 const MAX_THERMOSTAT_TEMP_C = 40;
@@ -473,6 +474,93 @@ app.post('/api/contact', async (req, res) => {
 
         await db.collection('messages').insertOne(contactMessage);
         res.json({ success: true, message: 'Message received! We will get back to you soon.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { email, password, name } = req.body;
+        
+        // Basic Regex validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        // Password at least 6 characters, one letter and one number
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
+        
+        if (!email || !password || !name) {
+            return res.status(400).json({ error: 'Name, email, and password are required.' });
+        }
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'Invalid email format.' });
+        }
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters and contain letters and numbers.' });
+        }
+
+        const newUser = {
+            name,
+            email: email.toLowerCase(),
+            password, // Plain text for mock purposes; in production, use bcrypt
+            createdAt: new Date()
+        };
+
+        if (useMemoryStore) {
+            const exists = memoryUsers.find(u => u.email === newUser.email);
+            if (exists) return res.status(409).json({ error: 'Email already exists.' });
+            
+            newUser._id = `user-${Date.now()}`;
+            memoryUsers.push(newUser);
+            return res.json({ success: true, user: { _id: newUser._id, name: newUser.name, email: newUser.email } });
+        }
+
+        const existingUser = await db.collection('users').findOne({ email: newUser.email });
+        if (existingUser) return res.status(409).json({ error: 'Email already exists.' });
+
+        const result = await db.collection('users').insertOne(newUser);
+        res.json({ success: true, user: { _id: result.insertedId, name: newUser.name, email: newUser.email } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+
+        if (useMemoryStore) {
+            const user = memoryUsers.find(u => u.email === email.toLowerCase() && u.password === password);
+            if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
+            return res.json({ success: true, user: { _id: user._id, name: user.name, email: user.email } });
+        }
+
+        const user = await db.collection('users').findOne({ email: email.toLowerCase(), password });
+        if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
+        
+        res.json({ success: true, user: { _id: user._id, name: user.name, email: user.email } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+
+        if (useMemoryStore) {
+            const before = memoryUsers.length;
+            memoryUsers = memoryUsers.filter(u => u._id !== userId);
+            if (memoryUsers.length === before) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            return res.json({ success: true });
+        }
+
+        const result = await db.collection('users').deleteOne({ _id: new ObjectId(userId) });
+        if (result.deletedCount === 0) return res.status(404).json({ error: 'User not found' });
+
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
