@@ -118,7 +118,7 @@ function addAlert(message) {
     const now = new Date();
     memoryAlerts.unshift({
         _id: `alert-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
         message,
         timestamp: now
     });
@@ -197,7 +197,7 @@ app.post('/api/devices/toggle', async (req, res) => {
         );
 
         const statusText = newState ? 'turned ON' : 'turned OFF';
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
         await db.collection('alerts').insertOne({
             time: now,
@@ -264,7 +264,7 @@ app.post('/api/devices', async (req, res) => {
 
         const result = await db.collection('devices').insertOne(newDevice);
 
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
         await db.collection('alerts').insertOne({
             time: now,
             message: `New device added: ${newDevice.name}`,
@@ -332,7 +332,7 @@ app.put('/api/devices/:id', async (req, res) => {
         );
 
         if (updates.value !== undefined) {
-            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
             await db.collection('alerts').insertOne({
                 time: now,
                 message: `${deviceForAlert.name} temperature set to ${updates.value}°C.`,
@@ -364,7 +364,7 @@ app.delete('/api/devices/:id', async (req, res) => {
 
         await db.collection('devices').deleteOne({ _id: new ObjectId(deviceId) });
 
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
         await db.collection('alerts').insertOne({
             time: now,
             message: 'A device was removed.',
@@ -428,7 +428,7 @@ app.post('/api/devices/import', async (req, res) => {
 
         await db.collection('devices').insertMany(cleanDevices);
 
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
         await db.collection('alerts').insertOne({
             time: now,
             message: `${cleanDevices.length} device(s) imported successfully.`,
