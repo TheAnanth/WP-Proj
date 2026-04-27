@@ -22,6 +22,8 @@ createApp({
         return {
             currentUser: null,
             showProfileMenu: false,
+            toastMessage: '',
+            toastType: '',
             devices: [],
             alerts: [],
             stats: {
@@ -141,6 +143,16 @@ createApp({
             };
         },
 
+        showToast(message, type = 'success') {
+            this.toastMessage = message;
+            this.toastType = type;
+            const toastEl = document.getElementById('appToast');
+            if (toastEl) {
+                const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+                toast.show();
+            }
+        },
+
         logout() {
             localStorage.removeItem('smartsync_user');
             localStorage.removeItem('smartsync_token');
@@ -204,13 +216,15 @@ createApp({
                     body: JSON.stringify(updates)
                 });
                 if (response.ok) {
-                    this.refreshAll();
-                    const modalEl = document.getElementById('editDeviceModal');
-                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                    if (modalInstance) {
-                        modalInstance.hide();
-                    }
                     this.editDevice = null;
+                    this.editFormError = '';
+                    const modalEl = document.getElementById('editDeviceModal');
+                    if (modalEl) {
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    }
+                    this.showToast('Device updated successfully!');
+                    this.refreshAll();
                 } else {
                     const errorData = await response.json().catch(() => ({}));
                     this.editFormError = errorData.error || 'Failed to update device.';
@@ -294,7 +308,7 @@ createApp({
                 if (response.ok) {
 
                     this.newDevice = { name: '', type: '', ipAddress: '' };
-
+                    this.showToast('Device added successfully!');
                     this.refreshAll();
                 } else {
                     const errorData = await response.json().catch(() => ({}));
@@ -314,6 +328,7 @@ createApp({
                         method: 'DELETE',
                         headers: this.authHeaders()
                     });
+                    this.showToast('Device removed successfully!');
                     this.fetchDevices();
                 } catch (error) {
                     console.error("Failed to delete device:", error);
@@ -514,7 +529,7 @@ createApp({
                     const result = await response.json();
 
                     if (response.ok) {
-                        alert(`Successfully imported ${result.count} device(s)!`);
+                        this.showToast(`Successfully imported ${result.count} device(s)!`);
                         this.refreshAll();
                     } else {
 

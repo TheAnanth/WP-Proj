@@ -411,6 +411,18 @@
             </div>
         </div>
 
+        <!-- Global Toast Notification -->
+        <div class="toast-container position-fixed bottom-0 end-0 p-4" style="z-index: 1090;">
+            <div id="appToast" class="toast toast-organic align-items-center border-0" :class="toastType" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body fw-bold">
+                        {{ toastMessage }}
+                    </div>
+                    <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- ============================================================

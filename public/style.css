@@ -406,3 +406,22 @@ body {
 [data-bs-theme="dark"] .dropdown-header {
     color: var(--org-muted-fg);
 }
+
+/* Toast Organic */
+.toast-organic {
+    background: var(--org-bg);
+    border: 1px solid var(--org-border);
+    color: var(--org-fg);
+    border-radius: var(--org-radius);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    font-family: var(--font-sans);
+}
+.toast-organic.success {
+    border-left: 5px solid var(--org-primary);
+}
+.toast-organic.error {
+    border-left: 5px solid var(--org-destructive);
+}
+[data-bs-theme="dark"] .toast-organic {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
