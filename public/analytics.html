@@ -1,0 +1,126 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartSync Analytics</title>
+    
+    <!-- Bootstrap CSS (Unit IV) — Loaded from CDN (Content Delivery Network) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Our custom CSS file — loaded AFTER Bootstrap so our styles can override it -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="app">
+        
+        <!-- ======================== NAVBAR ======================== -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+            <div class="container">
+                <a class="navbar-brand fw-bold" href="index.html">⚡ SmartSync</a>
+                
+                <div class="d-flex align-items-center gap-3">
+                    <a class="nav-link text-light" href="index.html">Dashboard</a>
+                    <a class="nav-link text-light active" href="analytics.html">Analytics</a>
+                    <a class="nav-link text-light" href="contact.html">Contact Us</a>
+                    
+                    <button class="dark-mode-btn" @click="toggleDarkMode" :title="isDark ? 'Light Mode' : 'Dark Mode'">
+                        {{ isDark ? '☀️' : '🌙' }}
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+
+            <!-- ======================== STATS BAR ======================== -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="stat-number text-primary">{{ stats.total }}</div>
+                        <div class="stat-label">Total Devices</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="stat-number text-success">{{ stats.active }}</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="stat-number text-secondary">{{ stats.offline }}</div>
+                        <div class="stat-label">Offline</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- ======================== MAIN SECTION (Left Column) ======================== -->
+                <div class="col-md-8">
+                    <h2 class="mb-3">Energy Consumption Analytics</h2>
+                    <div class="card mb-4 shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <p class="text-muted mb-0">Projected energy use based on standard device values.</p>
+                                <select class="form-select w-auto" v-model="chartTimeframe" @change="renderChart">
+                                    <option value="hourly">Hourly Projection (24 Hours)</option>
+                                    <option value="monthly">Monthly Projection (30 Days)</option>
+                                    <option value="yearly">Yearly Projection (12 Months)</option>
+                                </select>
+                            </div>
+                            <canvas id="energyChart" style="max-height: 350px;"></canvas>
+                        </div>
+                    </div>
+
+                    <h2 class="mb-3">Data Management</h2>
+                    <div class="card mb-4 shadow-sm border-0">
+                        <div class="card-body">
+                            <p class="text-muted mb-3">Export your synced devices to a JSON file or import a previous backup.</p>
+                            <div class="data-actions d-flex gap-2">
+                                <button class="btn btn-outline-primary" @click="exportToJSON">
+                                    📥 Export JSON
+                                </button>
+                                <label class="btn btn-outline-secondary mb-0">
+                                    📤 Import JSON
+                                    <input type="file" accept=".json" @change="importJSON" 
+                                            ref="fileInput" style="display: none;">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================== SIDEBAR (Right Column) ======================== -->
+                <div class="col-md-4">
+                    <h2 class="mb-3">
+                        Activity Log
+                        <button id="toggle-alerts" class="btn btn-sm btn-outline-secondary float-end mt-1">Hide</button>
+                    </h2>
+                    <ul class="list-group shadow-sm" id="alerts-box">
+                        <li class="list-group-item list-group-item-light border-0 border-bottom" 
+                            v-for="alert in alerts" :key="alert._id">
+                            <strong class="text-primary">[{{ alert.time }}]</strong> <br>
+                            {{ alert.message }}
+                        </li>
+                        <li v-if="alerts.length === 0" class="list-group-item text-muted">No recent activity.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center text-muted py-4 mt-4">
+            <small>SmartSync Dashboard &copy; 2025 — Built with Node.js, Vue.js, Bootstrap & MongoDB</small>
+        </footer>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

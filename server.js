@@ -233,6 +233,7 @@ app.post('/api/devices', async (req, res) => {
         const newDevice = {
             name: String(req.body.name || '').trim(),
             type: req.body.type,
+            subType: String(req.body.subType || '').trim(),
             ipAddress: String(req.body.ipAddress || '').trim(),
             isOn: false,
 
