@@ -146,11 +146,14 @@ createApp({
         showToast(message, type = 'success') {
             this.toastMessage = message;
             this.toastType = type;
-            const toastEl = document.getElementById('appToast');
-            if (toastEl) {
-                const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
-                toast.show();
-            }
+            // Wait for next DOM update cycle so toastMessage is rendered
+            this.$nextTick(() => {
+                const toastEl = document.getElementById('appToast');
+                if (toastEl) {
+                    const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3000 });
+                    toast.show();
+                }
+            });
         },
 
         logout() {
