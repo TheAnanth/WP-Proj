@@ -290,17 +290,14 @@ app.put('/api/devices/:id', async (req, res) => {
             }
 
             if (updates.value !== undefined) {
-                if (device.type !== 'thermostat') {
-                    return res.status(400).json({ error: 'Temperature updates are only allowed for thermostat devices.' });
+                if (device.type === 'thermostat') {
+                    if (!isThermostatTemperatureInRange(updates.value)) {
+                        return res.status(400).json({
+                            error: `Temperature must be between ${MIN_THERMOSTAT_TEMP_C}°C and ${MAX_THERMOSTAT_TEMP_C}°C.`
+                        });
+                    }
+                    updates.value = normalizeThermostatTemperature(updates.value);
                 }
-
-                if (!isThermostatTemperatureInRange(updates.value)) {
-                    return res.status(400).json({
-                        error: `Temperature must be between ${MIN_THERMOSTAT_TEMP_C}°C and ${MAX_THERMOSTAT_TEMP_C}°C.`
-                    });
-                }
-
-                updates.value = normalizeThermostatTemperature(updates.value);
             }
 
             Object.assign(device, updates);
@@ -318,17 +315,14 @@ app.put('/api/devices/:id', async (req, res) => {
                 return res.status(404).json({ error: 'Device not found' });
             }
 
-            if (device.type !== 'thermostat') {
-                return res.status(400).json({ error: 'Temperature updates are only allowed for thermostat devices.' });
+            if (device.type === 'thermostat') {
+                if (!isThermostatTemperatureInRange(updates.value)) {
+                    return res.status(400).json({
+                        error: `Temperature must be between ${MIN_THERMOSTAT_TEMP_C}°C and ${MAX_THERMOSTAT_TEMP_C}°C.`
+                    });
+                }
+                updates.value = normalizeThermostatTemperature(updates.value);
             }
-
-            if (!isThermostatTemperatureInRange(updates.value)) {
-                return res.status(400).json({
-                    error: `Temperature must be between ${MIN_THERMOSTAT_TEMP_C}°C and ${MAX_THERMOSTAT_TEMP_C}°C.`
-                });
-            }
-
-            updates.value = normalizeThermostatTemperature(updates.value);
             deviceForAlert = device;
         }
 

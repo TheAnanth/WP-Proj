@@ -31,9 +31,9 @@
                     style="color: var(--org-fg);" href="#">⚡ SmartSync</a>
 
                 <div class="d-flex align-items-center gap-3">
-                    <a class="nav-link text-light" href="index.html">Dashboard</a>
-                    <a class="nav-link text-light" href="analytics.html">Analytics</a>
-                    <a class="nav-link text-light" href="contact.html">Contact Us</a>
+                    <a class="nav-link" href="index.html">Dashboard</a>
+                    <a class="nav-link" href="analytics.html">Analytics</a>
+                    <a class="nav-link" href="contact.html">Contact Us</a>
 
                     <!-- Dark Mode Toggle Button
                          @click is a Vue event listener (short for v-on:click).
@@ -376,7 +376,7 @@
         </footer>
 
         <!-- Edit Device Modal -->
-        <div class="modal fade" id="editDeviceModal" tabindex="-1">
+        <div class="modal fade" id="editDeviceModal" tabindex="-1" v-if="editDevice">
             <div class="modal-dialog">
                 <div class="modal-content card-organic p-2 border-0" style="background-color: var(--org-bg);">
                     <div class="modal-header border-0">

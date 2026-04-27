@@ -378,6 +378,14 @@ body {
     box-shadow: var(--shadow-soft);
     margin-bottom: 2rem;
 }
+.nav-organic .nav-link {
+    color: var(--org-fg) !important;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+.nav-organic .nav-link:hover, .nav-organic .nav-link.active {
+    color: var(--org-primary) !important;
+}
 [data-bs-theme="dark"] .nav-organic {
     background: rgba(44, 44, 36, 0.8);
     border-color: rgba(74, 74, 64, 0.5);
