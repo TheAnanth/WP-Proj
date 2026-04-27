@@ -144,14 +144,17 @@ createApp({
         },
 
         showToast(message, type = 'success') {
+            console.log("showToast triggered:", message, type);
             this.toastMessage = message;
             this.toastType = type;
             // Wait for next DOM update cycle so toastMessage is rendered
             this.$nextTick(() => {
                 const toastEl = document.getElementById('appToast');
+                console.log("Toast element found:", !!toastEl);
                 if (toastEl) {
                     const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3000 });
                     toast.show();
+                    console.log("Toast show() called");
                 }
             });
         },
@@ -309,8 +312,13 @@ createApp({
                 });
 
                 if (response.ok) {
-
-                    this.newDevice = { name: '', type: '', ipAddress: '' };
+                    this.newDevice = { name: '', type: '', subType: '', ipAddress: '' };
+                    this.formError = '';
+                    const modalEl = document.getElementById('addDeviceModal');
+                    if (modalEl) {
+                        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                        modal.hide();
+                    }
                     this.showToast('Device added successfully!');
                     this.refreshAll();
                 } else {
